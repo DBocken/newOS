@@ -5,7 +5,17 @@
 import type { ChatMessage } from "../../src/types";
 
 const OPENAI_URL = "https://api.openai.com/v1/chat/completions";
-const MODEL = process.env.OPENAI_MODEL ?? "gpt-4o-mini";
+const DEFAULT_MODEL = process.env.OPENAI_MODEL ?? "gpt-4o-mini";
+
+// Allow-list of models the client may request, so a tampered request can't
+// point us at an arbitrary string.
+const ALLOWED_MODELS = new Set([
+  "gpt-4o-mini",
+  "gpt-4o",
+  "gpt-4.1-mini",
+  "gpt-4.1",
+  "o1-mini",
+]);
 
 export async function POST(request: Request) {
   const apiKey = process.env.OPENAI_API_KEY;
@@ -16,7 +26,12 @@ export async function POST(request: Request) {
     );
   }
 
-  let body: { systemPrompt?: string; messages?: ChatMessage[] };
+  let body: {
+    systemPrompt?: string;
+    messages?: ChatMessage[];
+    model?: string;
+    temperature?: number;
+  };
   try {
     body = await request.json();
   } catch {
@@ -31,6 +46,13 @@ export async function POST(request: Request) {
     );
   }
 
+  const model =
+    body.model && ALLOWED_MODELS.has(body.model) ? body.model : DEFAULT_MODEL;
+  const temperature =
+    typeof body.temperature === "number"
+      ? Math.max(0, Math.min(2, body.temperature))
+      : 0.8;
+
   const upstream = await fetch(OPENAI_URL, {
     method: "POST",
     headers: {
@@ -38,7 +60,8 @@ export async function POST(request: Request) {
       Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: MODEL,
+      model,
+      temperature,
       stream: true,
       messages: [{ role: "system", content: systemPrompt }, ...messages],
     }),

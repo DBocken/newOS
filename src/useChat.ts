@@ -1,33 +1,41 @@
 import { useCallback, useState } from "react";
 import { fetch as expoFetch } from "expo/fetch";
 import type { Character } from "./characters";
+import { useStore } from "./store";
 import type { ChatMessage } from "./types";
 
 // Points the client at the API route. In Expo dev, same origin works via a
 // relative path; expo/fetch resolves it against the dev server.
 const CHAT_ENDPOINT = "/api/chat";
 
-export function useChat(character: Character) {
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    { role: "assistant", content: character.greeting },
-  ]);
+// Keep the context bounded so long chats don't blow up cost/latency.
+// Always keep the greeting + a trailing window of turns.
+const MAX_TURNS = 24;
+
+function trimForModel(messages: ChatMessage[]): ChatMessage[] {
+  if (messages.length <= MAX_TURNS) return messages;
+  const head = messages.slice(0, 1); // greeting
+  const tail = messages.slice(-(MAX_TURNS - 1));
+  return [...head, ...tail];
+}
+
+export function useChat(conversationId: string, character: Character) {
+  const getConversation = useStore((s) => s.getConversation);
+  const setStoreMessages = useStore((s) => s.setMessages);
+  const model = useStore((s) => s.settings.model);
+  const temperature = useStore((s) => s.settings.temperature);
+
+  const messages = getConversation(conversationId)?.messages ?? [];
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const send = useCallback(
-    async (text: string) => {
-      const trimmed = text.trim();
-      if (!trimmed || isStreaming) return;
-
+  const stream = useCallback(
+    async (history: ChatMessage[]) => {
       setError(null);
-      const userMsg: ChatMessage = { role: "user", content: trimmed };
-      // History sent to the model (exclude the local greeting bubble is fine
-      // to keep; the model just sees it as its own prior turn).
-      const history = [...messages, userMsg];
-
-      // Optimistically add the user message plus an empty assistant bubble
-      // that we'll fill token by token.
-      setMessages([...history, { role: "assistant", content: "" }]);
+      setStoreMessages(conversationId, [
+        ...history,
+        { role: "assistant", content: "" },
+      ]);
       setIsStreaming(true);
 
       try {
@@ -36,7 +44,9 @@ export function useChat(character: Character) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             systemPrompt: character.systemPrompt,
-            messages: history,
+            messages: trimForModel(history),
+            model,
+            temperature,
           }),
         });
 
@@ -53,26 +63,40 @@ export function useChat(character: Character) {
           const { done, value } = await reader.read();
           if (done) break;
           acc += decoder.decode(value, { stream: true });
-          setMessages((prev) => {
-            const next = [...prev];
-            next[next.length - 1] = { role: "assistant", content: acc };
-            return next;
-          });
+          setStoreMessages(conversationId, [
+            ...history,
+            { role: "assistant", content: acc },
+          ]);
         }
       } catch (e: any) {
         setError(e?.message ?? "Something went wrong.");
-        // Drop the empty assistant bubble on failure.
-        setMessages((prev) => {
-          const next = [...prev];
-          if (next[next.length - 1]?.content === "") next.pop();
-          return next;
-        });
+        setStoreMessages(conversationId, history); // drop empty bubble
       } finally {
         setIsStreaming(false);
       }
     },
-    [character, messages, isStreaming]
+    [conversationId, character, model, temperature, setStoreMessages]
   );
 
-  return { messages, send, isStreaming, error };
+  const send = useCallback(
+    async (text: string) => {
+      const trimmed = text.trim();
+      if (!trimmed || isStreaming) return;
+      const current = getConversation(conversationId)?.messages ?? [];
+      await stream([...current, { role: "user", content: trimmed }]);
+    },
+    [conversationId, getConversation, isStreaming, stream]
+  );
+
+  // Re-run the model from the last user message, discarding the last reply.
+  const regenerate = useCallback(async () => {
+    if (isStreaming) return;
+    const current = getConversation(conversationId)?.messages ?? [];
+    let cut = [...current];
+    while (cut.length && cut[cut.length - 1].role === "assistant") cut.pop();
+    if (!cut.length) return;
+    await stream(cut);
+  }, [conversationId, getConversation, isStreaming, stream]);
+
+  return { messages, send, regenerate, isStreaming, error };
 }

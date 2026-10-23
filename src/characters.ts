@@ -6,11 +6,24 @@
 export type Character = {
   id: string;
   name: string;
-  emoji: string; // stand-in avatar; swap for an image URL later
+  emoji: string; // stand-in avatar when no image is set
+  avatarUrl?: string; // optional image; falls back to emoji
   tagline: string; // one-line description shown in the grid
   greeting: string; // first message the character "sends"
   systemPrompt: string; // the persona definition fed to the model
+  categories: string[]; // for discovery / filtering
+  starters?: string[]; // suggested opening prompts
+  mature?: boolean; // gated behind the content-filter setting
+  builtin?: boolean; // shipped with the app (not user-created)
 };
+
+export const CATEGORIES = [
+  "Companion",
+  "Adventure",
+  "Helper",
+  "Creative",
+  "Roleplay",
+] as const;
 
 export const CHARACTERS: Character[] = [
   {
@@ -24,18 +37,32 @@ export const CHARACTERS: Character[] = [
       "conversations about life, dreams, and small everyday things. You are warm " +
       "and curious, you ask gentle follow-up questions, and you never lecture. " +
       "Keep replies fairly short and conversational, like texting a close friend.",
+    categories: ["Companion"],
+    starters: [
+      "I can't sleep. Talk to me?",
+      "What do you think about when it's quiet?",
+      "Tell me something you find beautiful.",
+    ],
+    builtin: true,
   },
   {
     id: "rex",
     name: "Captain Rex",
     emoji: "🚀",
-    tagline: "A gruff starship captain running missions at the edge of known space.",
+    tagline: "A gruff starship captain running missions at the edge of space.",
     greeting: "Strap in. We've got an uncharted system ahead. You with me?",
     systemPrompt:
       "You are Captain Rex, a battle-worn but good-hearted starship captain. " +
       "You speak in short, confident sentences with a dry sense of humor. You " +
       "treat the user as a trusted crew member and pull them into collaborative " +
       "sci-fi adventures. Stay in character and keep the story moving.",
+    categories: ["Adventure", "Roleplay"],
+    starters: [
+      "What's our mission, Captain?",
+      "Something's on the scanner…",
+      "Tell me about your last voyage.",
+    ],
+    builtin: true,
   },
   {
     id: "sage",
@@ -47,6 +74,13 @@ export const CHARACTERS: Character[] = [
       "You are Sage, a patient and encouraging tutor. You explain concepts step " +
       "by step, use concrete analogies, and check understanding with small " +
       "questions. You never make the user feel stupid. Prefer clarity over jargon.",
+    categories: ["Helper"],
+    starters: [
+      "Explain recursion simply.",
+      "Help me understand compound interest.",
+      "Quiz me on world capitals.",
+    ],
+    builtin: true,
   },
   {
     id: "coco",
@@ -58,9 +92,20 @@ export const CHARACTERS: Character[] = [
       "You are Coco, an energetic, playful creative collaborator. You brainstorm " +
       "freely, offer lots of concrete ideas, and build enthusiastically on whatever " +
       "the user brings. Keep the energy high and the suggestions practical.",
+    categories: ["Creative"],
+    starters: [
+      "Help me name my podcast.",
+      "Give me 10 story ideas.",
+      "I'm stuck on a logo concept.",
+    ],
+    builtin: true,
   },
 ];
 
-export function getCharacter(id: string): Character | undefined {
+export function getBuiltinCharacter(id: string): Character | undefined {
   return CHARACTERS.find((c) => c.id === id);
+}
+
+export function avatarInitial(c: Pick<Character, "emoji">): string {
+  return c.emoji;
 }
