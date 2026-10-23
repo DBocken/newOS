@@ -2,25 +2,10 @@ import { useCallback, useState } from "react";
 import { fetch as expoFetch } from "expo/fetch";
 import type { Character } from "./characters";
 import { useStore } from "./store";
-import type { Persona } from "./store";
-import type { ChatMessage } from "./types";
+import { buildSystemPrompt } from "./prompt";
 
-// Compose the system prompt from the character persona, any long-term memory,
-// and the user's active persona (their own identity).
-export function buildSystemPrompt(
-  base: string,
-  memory: string,
-  persona?: Persona
-): string {
-  let prompt = base;
-  if (persona) {
-    prompt += `\n\nYou are talking to ${persona.name}. ${persona.description}`;
-  }
-  if (memory) {
-    prompt += `\n\nThings to remember about the user:\n${memory}`;
-  }
-  return prompt;
-}
+export { buildSystemPrompt };
+import type { ChatMessage } from "./types";
 
 // Points the client at the API route. In Expo dev, same origin works via a
 // relative path; expo/fetch resolves it against the dev server.
