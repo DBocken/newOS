@@ -20,6 +20,7 @@ import { useStore } from "../../src/store";
 import { useChat } from "../../src/useChat";
 import { useVoiceInput } from "../../src/useVoiceInput";
 import { Avatar } from "../../src/components/Avatar";
+import { MessageContent } from "../../src/components/MessageContent";
 
 export default function ChatScreen() {
   // `id` here is the conversation id.
@@ -72,6 +73,13 @@ export default function ChatScreen() {
       messages.filter((_, i) => i !== index)
     );
 
+  // Edit a prior user message: drop it and everything after, then reload the
+  // text into the composer so the next send re-runs from that point.
+  const editAt = (index: number, content: string) => {
+    setStoreMessages(id, messages.slice(0, index));
+    setDraft(content);
+  };
+
   const onLongPress = (index: number, content: string, isAssistant: boolean) => {
     Haptics.selectionAsync();
     const options: any[] = [
@@ -80,6 +88,9 @@ export default function ChatScreen() {
     ];
     if (isAssistant && !isStreaming) {
       options.push({ text: "Regenerate", onPress: regenerate });
+    }
+    if (!isAssistant && !isStreaming) {
+      options.push({ text: "Edit", onPress: () => editAt(index, content) });
     }
     if (index > 0) {
       options.push({
@@ -125,9 +136,11 @@ export default function ChatScreen() {
               onLongPress={() => onLongPress(index, item.content, !mine)}
               style={[styles.bubble, mine ? styles.mine : styles.theirs]}
             >
-              <Text style={styles.bubbleText}>
-                {item.content || (isStreaming ? "…" : "")}
-              </Text>
+              {item.content ? (
+                <MessageContent content={item.content} />
+              ) : (
+                <Text style={styles.bubbleText}>{isStreaming ? "…" : ""}</Text>
+              )}
             </Pressable>
           );
         }}

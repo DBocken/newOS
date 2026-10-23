@@ -1,10 +1,12 @@
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import { useState } from "react";
 import {
   Alert,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import { Avatar } from "../../src/components/Avatar";
@@ -21,6 +23,9 @@ export default function CharacterProfile() {
   const createConversation = useStore((s) => s.createConversation);
   const deleteConversation = useStore((s) => s.deleteConversation);
   const deleteCharacter = useStore((s) => s.deleteCharacter);
+  const storedMemory = useStore((s) => s.memories[id] ?? "");
+  const setMemory = useStore((s) => s.setMemory);
+  const [memoryDraft, setMemoryDraft] = useState(storedMemory);
 
   if (!character) {
     return (
@@ -75,6 +80,22 @@ export default function CharacterProfile() {
         >
           <Text style={styles.secondaryText}>{isFav ? "♥" : "♡"}</Text>
         </Pressable>
+      </View>
+
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Memory</Text>
+        <Text style={styles.memoryHint}>
+          Facts {character.name} will remember across chats.
+        </Text>
+        <TextInput
+          style={styles.memoryInput}
+          value={memoryDraft}
+          onChangeText={setMemoryDraft}
+          onEndEditing={() => setMemory(id, memoryDraft.trim())}
+          placeholder="e.g. My name is Alex. I love hiking and sci-fi."
+          placeholderTextColor="#6b6b78"
+          multiline
+        />
       </View>
 
       {conversations.length > 0 ? (
@@ -187,6 +208,16 @@ const styles = StyleSheet.create({
   },
   convoTitle: { color: "#fff", fontSize: 15, fontWeight: "600" },
   convoMeta: { color: "#6b6b78", fontSize: 12, marginTop: 4 },
+  memoryHint: { color: "#9a9aa8", fontSize: 13, marginBottom: 8 },
+  memoryInput: {
+    backgroundColor: "#17171f",
+    borderRadius: 14,
+    padding: 14,
+    color: "#fff",
+    fontSize: 14,
+    minHeight: 80,
+    textAlignVertical: "top",
+  },
   delete: {
     marginTop: 28,
     alignItems: "center",

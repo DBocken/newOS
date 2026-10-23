@@ -26,6 +26,7 @@ type State = {
   userCharacters: Character[];
   conversations: Record<string, Conversation>;
   favorites: string[];
+  memories: Record<string, string>; // per-character long-term memory
   settings: Settings;
   hydrated: boolean;
 
@@ -38,6 +39,10 @@ type State = {
   // favorites
   toggleFavorite: (id: string) => void;
   isFavorite: (id: string) => boolean;
+
+  // memory
+  getMemory: (characterId: string) => string;
+  setMemory: (characterId: string, memory: string) => void;
 
   // conversations
   conversationsFor: (characterId: string) => Conversation[];
@@ -61,6 +66,7 @@ export type SyncBlob = {
   userCharacters: Character[];
   conversations: Record<string, Conversation>;
   favorites: string[];
+  memories: Record<string, string>;
 };
 
 const DEFAULT_SETTINGS: Settings = {
@@ -81,6 +87,7 @@ export const useStore = create<State>()(
       userCharacters: [],
       conversations: {},
       favorites: [],
+      memories: {},
       settings: DEFAULT_SETTINGS,
       hydrated: false,
 
@@ -119,6 +126,13 @@ export const useStore = create<State>()(
         })),
 
       isFavorite: (id) => get().favorites.includes(id),
+
+      getMemory: (characterId) => get().memories[characterId] ?? "",
+
+      setMemory: (characterId, memory) =>
+        set((s) => ({
+          memories: { ...s.memories, [characterId]: memory },
+        })),
 
       conversationsFor: (characterId) =>
         Object.values(get().conversations)
@@ -194,6 +208,7 @@ export const useStore = create<State>()(
           userCharacters: [],
           conversations: {},
           favorites: [],
+          memories: {},
           settings: { ...DEFAULT_SETTINGS, onboarded: true },
         }),
 
@@ -208,6 +223,7 @@ export const useStore = create<State>()(
           userCharacters: s.userCharacters,
           conversations: s.conversations,
           favorites: s.favorites,
+          memories: s.memories,
         };
       },
 
@@ -224,6 +240,7 @@ export const useStore = create<State>()(
           favorites: Array.from(
             new Set([...blob.favorites, ...s.favorites])
           ),
+          memories: { ...s.memories, ...(blob.memories ?? {}) },
         })),
     }),
     {
@@ -233,6 +250,7 @@ export const useStore = create<State>()(
         userCharacters: s.userCharacters,
         conversations: s.conversations,
         favorites: s.favorites,
+        memories: s.memories,
         settings: s.settings,
         syncCode: s.syncCode,
       }),

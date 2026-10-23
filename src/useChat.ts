@@ -24,6 +24,7 @@ export function useChat(conversationId: string, character: Character) {
   const setStoreMessages = useStore((s) => s.setMessages);
   const model = useStore((s) => s.settings.model);
   const temperature = useStore((s) => s.settings.temperature);
+  const memory = useStore((s) => s.memories[character.id] ?? "");
 
   const messages = getConversation(conversationId)?.messages ?? [];
   const [isStreaming, setIsStreaming] = useState(false);
@@ -43,7 +44,9 @@ export function useChat(conversationId: string, character: Character) {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            systemPrompt: character.systemPrompt,
+            systemPrompt: memory
+              ? `${character.systemPrompt}\n\nThings to remember about the user:\n${memory}`
+              : character.systemPrompt,
             messages: trimForModel(history),
             model,
             temperature,
@@ -75,7 +78,7 @@ export function useChat(conversationId: string, character: Character) {
         setIsStreaming(false);
       }
     },
-    [conversationId, character, model, temperature, setStoreMessages]
+    [conversationId, character, model, temperature, memory, setStoreMessages]
   );
 
   const send = useCallback(
