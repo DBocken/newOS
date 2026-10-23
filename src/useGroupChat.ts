@@ -2,6 +2,7 @@ import { useCallback, useState } from "react";
 import { fetch as expoFetch } from "expo/fetch";
 import type { Character } from "./characters";
 import { useStore } from "./store";
+import { groupViewFor } from "./context";
 import type { ChatMessage } from "./types";
 
 const CHAT_ENDPOINT = "/api/chat";
@@ -31,20 +32,6 @@ async function complete(
     acc += decoder.decode(value, { stream: true });
   }
   return acc.trim();
-}
-
-// Map the shared transcript into a single member's point of view: their own
-// lines become assistant turns, everyone else (human + other characters)
-// becomes user turns tagged with the speaker.
-function viewFor(member: Character, transcript: ChatMessage[]): ChatMessage[] {
-  return transcript
-    .filter((m) => m.name !== "Room")
-    .map((m) => {
-      if (m.role === "user") return { role: "user" as const, content: m.content };
-      if (m.name === member.name)
-        return { role: "assistant" as const, content: m.content };
-      return { role: "user" as const, content: `${m.name}: ${m.content}` };
-    });
 }
 
 export function useGroupChat(conversationId: string, members: Character[]) {
@@ -80,7 +67,7 @@ export function useGroupChat(conversationId: string, members: Character[]) {
             `Do not speak for anyone else and do not prefix your name.`;
           const reply = await complete(
             system,
-            viewFor(member, transcript),
+            groupViewFor(member, transcript),
             model,
             temperature
           );

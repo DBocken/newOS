@@ -3,6 +3,7 @@ import { fetch as expoFetch } from "expo/fetch";
 import type { Character } from "./characters";
 import { useStore } from "./store";
 import { buildSystemPrompt } from "./prompt";
+import { trimForModel } from "./context";
 
 export { buildSystemPrompt };
 import type { ChatMessage } from "./types";
@@ -10,17 +11,6 @@ import type { ChatMessage } from "./types";
 // Points the client at the API route. In Expo dev, same origin works via a
 // relative path; expo/fetch resolves it against the dev server.
 const CHAT_ENDPOINT = "/api/chat";
-
-// Keep the context bounded so long chats don't blow up cost/latency.
-// Always keep the greeting + a trailing window of turns.
-const MAX_TURNS = 24;
-
-function trimForModel(messages: ChatMessage[]): ChatMessage[] {
-  if (messages.length <= MAX_TURNS) return messages;
-  const head = messages.slice(0, 1); // greeting
-  const tail = messages.slice(-(MAX_TURNS - 1));
-  return [...head, ...tail];
-}
 
 export function useChat(conversationId: string, character: Character) {
   const getConversation = useStore((s) => s.getConversation);
