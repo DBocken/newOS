@@ -24,6 +24,9 @@ app/
   create.tsx           create/edit characters (AI avatar gen + photo upload)
   gallery.tsx          community gallery: browse + import shared characters
   personas.tsx         manage your own identities (personas)
+  search.tsx           global search across all conversations
+  stats.tsx            insights: counts + most-chatted characters
+  paywall.tsx          subscription tiers (demo paywall, no real billing)
   settings.tsx         account/sync, model, temperature, filters, reminders
   onboarding.tsx       first-run intro
   api/chat+api.ts      server route -> OpenAI (streaming + moderation gate)
@@ -33,7 +36,10 @@ app/
 src/
   characters.ts        built-in character definitions
   store.ts             persisted state (zustand + AsyncStorage)
-  useChat.ts           client streaming hook (persona + memory in prompt)
+  subscription.ts      standalone tier/entitlement store (demo)
+  prompt.ts            pure system-prompt builder (unit-tested)
+  exportChat.ts        pure conversation -> markdown/JSON (unit-tested)
+  useChat.ts           client streaming hook (persona + memory, alternatives)
   useGroupChat.ts      multi-character turn-taking
   useVoiceInput.ts     web speech-to-text
   useAutoSync.ts       pull-on-launch / debounced-push when signed in

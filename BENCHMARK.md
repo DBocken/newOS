@@ -53,12 +53,16 @@ subscription tiers, bot moderation-before-activation, up to 100 personas:
 | Moderation before publishing a bot | ✅ |
 | Re-engagement notifications | ✅ local |
 | Account + automatic cloud sync | ✅ |
-| Paid subscription tiers | ⬜ |
+| Paid subscription tiers | 🟡 paywall UI + tier gating; demo, no real billing |
 | Native mobile app | ✅ |
 | Edit a sent message | ✅ |
 | Message actions (copy / regenerate) | ✅ |
 
-**26 features · score 24.0 · parity 92.3%**
+**26 features · score 24.5 · parity 94.2%**
+
+(Plus extras beyond the checklist that leading apps also have: global chat
+search, an insights/stats screen, swipeable response alternatives, and chat
+export. These aren't counted above to avoid padding the denominator.)
 
 ## What's still missing (the real gap)
 
@@ -74,9 +78,9 @@ is implemented here.
 
 ```python
 items = [  # 1 present, 0.5 partial, 0 absent
-  1,1,1,1,1,1,1,1,1,1,1,1,1,1,0.5,0.5,1,1,1,1,1,1,0,1,1,1
+  1,1,1,1,1,1,1,1,1,1,1,1,1,1,0.5,0.5,1,1,1,1,1,1,0.5,1,1,1
 ]
-print(f"{len(items)} features, parity {sum(items)/len(items)*100:.1f}%")  # 92.3%
+print(f"{len(items)} features, parity {sum(items)/len(items)*100:.1f}%")  # 94.2%
 ```
 
 ## Honest caveats

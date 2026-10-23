@@ -23,6 +23,11 @@ export default function RootLayout() {
             title: "Characters",
             headerRight: () => (
               <View style={{ flexDirection: "row", gap: 18, alignItems: "center" }}>
+                <Link href="/search" asChild>
+                  <Pressable hitSlop={10}>
+                    <Text style={{ fontSize: 18 }}>🔍</Text>
+                  </Pressable>
+                </Link>
                 <Link href="/gallery" asChild>
                   <Pressable hitSlop={10}>
                     <Text style={{ fontSize: 18 }}>🌐</Text>
@@ -64,6 +69,12 @@ export default function RootLayout() {
         <Stack.Screen name="settings" options={{ title: "Settings" }} />
         <Stack.Screen name="personas" options={{ title: "Personas" }} />
         <Stack.Screen name="gallery" options={{ title: "Community gallery" }} />
+        <Stack.Screen name="stats" options={{ title: "Insights" }} />
+        <Stack.Screen name="search" options={{ title: "Search" }} />
+        <Stack.Screen
+          name="paywall"
+          options={{ title: "Upgrade", presentation: "modal" }}
+        />
         <Stack.Screen name="onboarding" options={{ headerShown: false }} />
       </Stack>
     </SafeAreaProvider>

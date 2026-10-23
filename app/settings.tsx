@@ -124,6 +124,8 @@ export default function Settings() {
           label={`Personas${activePersona ? ` · ${activePersona.name}` : ""}`}
           onPress={() => router.push("/personas")}
         />
+        <Action label="Insights" onPress={() => router.push("/stats")} />
+        <Action label="Upgrade plan" onPress={() => router.push("/paywall")} />
       </Section>
 
       <Section title="Model">

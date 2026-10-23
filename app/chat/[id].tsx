@@ -21,6 +21,7 @@ import { useChat } from "../../src/useChat";
 import { useVoiceInput } from "../../src/useVoiceInput";
 import { Avatar } from "../../src/components/Avatar";
 import { MessageContent } from "../../src/components/MessageContent";
+import { conversationToMarkdown } from "../../src/exportChat";
 
 export default function ChatScreen() {
   // `id` here is the conversation id.
@@ -99,6 +100,11 @@ export default function ChatScreen() {
         onPress: () => deleteAt(index),
       });
     }
+    options.push({
+      text: "Export chat",
+      onPress: () =>
+        Clipboard.setStringAsync(conversationToMarkdown(convo, character.name)),
+    });
     options.push({ text: "Cancel", style: "cancel" });
     Alert.alert("Message", undefined, options);
   };
