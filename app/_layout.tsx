@@ -2,8 +2,10 @@ import { Link, Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { Pressable, Text, View } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import { useAutoSync } from "../src/useAutoSync";
 
 export default function RootLayout() {
+  useAutoSync();
   return (
     <SafeAreaProvider>
       <StatusBar style="light" />
@@ -20,7 +22,17 @@ export default function RootLayout() {
           options={{
             title: "Characters",
             headerRight: () => (
-              <View style={{ flexDirection: "row", gap: 18 }}>
+              <View style={{ flexDirection: "row", gap: 18, alignItems: "center" }}>
+                <Link href="/gallery" asChild>
+                  <Pressable hitSlop={10}>
+                    <Text style={{ fontSize: 18 }}>🌐</Text>
+                  </Pressable>
+                </Link>
+                <Link href="/group-new" asChild>
+                  <Pressable hitSlop={10}>
+                    <Text style={{ fontSize: 18 }}>👥</Text>
+                  </Pressable>
+                </Link>
                 <Link href="/create" asChild>
                   <Pressable hitSlop={10}>
                     <Text style={{ color: "#6d4aff", fontSize: 26, fontWeight: "600" }}>
@@ -39,11 +51,19 @@ export default function RootLayout() {
         />
         <Stack.Screen name="character/[id]" options={{ title: "" }} />
         <Stack.Screen name="chat/[id]" options={{ title: "" }} />
+        <Stack.Screen name="call/[id]" options={{ title: "Call" }} />
+        <Stack.Screen name="group/[id]" options={{ title: "" }} />
+        <Stack.Screen
+          name="group-new"
+          options={{ title: "New group", presentation: "modal" }}
+        />
         <Stack.Screen
           name="create"
           options={{ title: "New character", presentation: "modal" }}
         />
         <Stack.Screen name="settings" options={{ title: "Settings" }} />
+        <Stack.Screen name="personas" options={{ title: "Personas" }} />
+        <Stack.Screen name="gallery" options={{ title: "Community gallery" }} />
         <Stack.Screen name="onboarding" options={{ headerShown: false }} />
       </Stack>
     </SafeAreaProvider>

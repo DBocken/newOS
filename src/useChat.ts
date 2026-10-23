@@ -2,7 +2,25 @@ import { useCallback, useState } from "react";
 import { fetch as expoFetch } from "expo/fetch";
 import type { Character } from "./characters";
 import { useStore } from "./store";
+import type { Persona } from "./store";
 import type { ChatMessage } from "./types";
+
+// Compose the system prompt from the character persona, any long-term memory,
+// and the user's active persona (their own identity).
+export function buildSystemPrompt(
+  base: string,
+  memory: string,
+  persona?: Persona
+): string {
+  let prompt = base;
+  if (persona) {
+    prompt += `\n\nYou are talking to ${persona.name}. ${persona.description}`;
+  }
+  if (memory) {
+    prompt += `\n\nThings to remember about the user:\n${memory}`;
+  }
+  return prompt;
+}
 
 // Points the client at the API route. In Expo dev, same origin works via a
 // relative path; expo/fetch resolves it against the dev server.
@@ -25,6 +43,9 @@ export function useChat(conversationId: string, character: Character) {
   const model = useStore((s) => s.settings.model);
   const temperature = useStore((s) => s.settings.temperature);
   const memory = useStore((s) => s.memories[character.id] ?? "");
+  const persona = useStore((s) =>
+    s.personas.find((p) => p.id === s.activePersonaId)
+  );
 
   const messages = getConversation(conversationId)?.messages ?? [];
   const [isStreaming, setIsStreaming] = useState(false);
@@ -44,9 +65,11 @@ export function useChat(conversationId: string, character: Character) {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            systemPrompt: memory
-              ? `${character.systemPrompt}\n\nThings to remember about the user:\n${memory}`
-              : character.systemPrompt,
+            systemPrompt: buildSystemPrompt(
+              character.systemPrompt,
+              memory,
+              persona
+            ),
             messages: trimForModel(history),
             model,
             temperature,
@@ -78,7 +101,7 @@ export function useChat(conversationId: string, character: Character) {
         setIsStreaming(false);
       }
     },
-    [conversationId, character, model, temperature, memory, setStoreMessages]
+    [conversationId, character, model, temperature, memory, persona, setStoreMessages]
   );
 
   const send = useCallback(

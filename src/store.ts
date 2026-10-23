@@ -6,11 +6,18 @@ import type { ChatMessage } from "./types";
 
 export type Conversation = {
   id: string;
-  characterId: string;
+  characterId: string; // primary character ("" for groups)
+  memberIds?: string[]; // set for group conversations
   title: string;
   messages: ChatMessage[];
   createdAt: number;
   updatedAt: number;
+};
+
+export type Persona = {
+  id: string;
+  name: string;
+  description: string;
 };
 
 export type Settings = {
@@ -27,6 +34,8 @@ type State = {
   conversations: Record<string, Conversation>;
   favorites: string[];
   memories: Record<string, string>; // per-character long-term memory
+  personas: Persona[]; // user identities
+  activePersonaId: string | null;
   settings: Settings;
   hydrated: boolean;
 
@@ -44,9 +53,16 @@ type State = {
   getMemory: (characterId: string) => string;
   setMemory: (characterId: string, memory: string) => void;
 
+  // personas
+  upsertPersona: (p: Persona) => void;
+  deletePersona: (id: string) => void;
+  setActivePersona: (id: string | null) => void;
+  activePersona: () => Persona | undefined;
+
   // conversations
   conversationsFor: (characterId: string) => Conversation[];
   createConversation: (characterId: string) => Conversation;
+  createGroup: (memberIds: string[]) => Conversation;
   getConversation: (id: string) => Conversation | undefined;
   setMessages: (conversationId: string, messages: ChatMessage[]) => void;
   renameConversation: (conversationId: string, title: string) => void;
@@ -60,6 +76,10 @@ type State = {
   syncCode: string;
   exportBlob: () => SyncBlob;
   importBlob: (blob: SyncBlob) => void;
+
+  // account (passphrase-based auto-sync)
+  accountKey: string | null;
+  setAccountKey: (key: string | null) => void;
 };
 
 export type SyncBlob = {
@@ -88,6 +108,8 @@ export const useStore = create<State>()(
       conversations: {},
       favorites: [],
       memories: {},
+      personas: [],
+      activePersonaId: null,
       settings: DEFAULT_SETTINGS,
       hydrated: false,
 
@@ -134,6 +156,24 @@ export const useStore = create<State>()(
           memories: { ...s.memories, [characterId]: memory },
         })),
 
+      upsertPersona: (p) =>
+        set((s) => ({
+          personas: s.personas.some((x) => x.id === p.id)
+            ? s.personas.map((x) => (x.id === p.id ? p : x))
+            : [...s.personas, p],
+        })),
+
+      deletePersona: (id) =>
+        set((s) => ({
+          personas: s.personas.filter((p) => p.id !== id),
+          activePersonaId: s.activePersonaId === id ? null : s.activePersonaId,
+        })),
+
+      setActivePersona: (id) => set({ activePersonaId: id }),
+
+      activePersona: () =>
+        get().personas.find((p) => p.id === get().activePersonaId),
+
       conversationsFor: (characterId) =>
         Object.values(get().conversations)
           .filter((c) => c.characterId === characterId)
@@ -147,6 +187,32 @@ export const useStore = create<State>()(
           characterId,
           title: "New chat",
           messages: char ? [{ role: "assistant", content: char.greeting }] : [],
+          createdAt: now,
+          updatedAt: now,
+        };
+        set((s) => ({
+          conversations: { ...s.conversations, [convo.id]: convo },
+        }));
+        return convo;
+      },
+
+      createGroup: (memberIds) => {
+        const names = memberIds
+          .map((mid) => get().getCharacter(mid)?.name)
+          .filter(Boolean);
+        const now = Date.now();
+        const convo: Conversation = {
+          id: uid(),
+          characterId: "",
+          memberIds,
+          title: names.join(", ") || "Group chat",
+          messages: [
+            {
+              role: "assistant",
+              content: `${names.join(", ")} joined the chat.`,
+              name: "Room",
+            },
+          ],
           createdAt: now,
           updatedAt: now,
         };
@@ -227,6 +293,9 @@ export const useStore = create<State>()(
         };
       },
 
+      accountKey: null,
+      setAccountKey: (key) => set({ accountKey: key }),
+
       importBlob: (blob) =>
         set((s) => ({
           // Merge: incoming characters/conversations win on id collisions.
@@ -251,8 +320,11 @@ export const useStore = create<State>()(
         conversations: s.conversations,
         favorites: s.favorites,
         memories: s.memories,
+        personas: s.personas,
+        activePersonaId: s.activePersonaId,
         settings: s.settings,
         syncCode: s.syncCode,
+        accountKey: s.accountKey,
       }),
       onRehydrateStorage: () => (state) => {
         state && (state.hydrated = true);

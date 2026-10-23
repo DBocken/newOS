@@ -14,26 +14,35 @@ calls OpenAI with streaming enabled and pipes the text back token by token.
 
 ```
 app/
-  _layout.tsx          navigation shell (dark theme)
+  _layout.tsx          navigation shell (dark theme) + auto-sync
   index.tsx            discovery: search, categories, favorites
-  character/[id].tsx   character profile + conversation list
-  chat/[id].tsx        chat: streaming, TTS, copy/regen/delete, mic (web STT)
-  create.tsx           create / edit characters (+ AI avatar generation)
-  settings.tsx         model, temperature, content filter, sync, reminders
+  character/[id].tsx   profile: memory, conversations, publish, edit/delete
+  chat/[id].tsx        chat: streaming, TTS, mic, edit/regen/delete, markdown+images
+  call/[id].tsx        hands-free voice call (STT↔TTS loop)
+  group/[id].tsx       group chat (multiple characters reply in turn)
+  group-new.tsx        pick characters for a group
+  create.tsx           create/edit characters (AI avatar gen + photo upload)
+  gallery.tsx          community gallery: browse + import shared characters
+  personas.tsx         manage your own identities (personas)
+  settings.tsx         account/sync, model, temperature, filters, reminders
   onboarding.tsx       first-run intro
-  api/chat+api.ts      server route -> OpenAI (streaming + moderation)
+  api/chat+api.ts      server route -> OpenAI (streaming + moderation gate)
   api/avatar+api.ts    server route -> OpenAI images (avatar generation)
-  api/sync+api.ts      cross-device sync by code
+  api/sync+api.ts      cross-device sync / account by passphrase
+  api/gallery+api.ts   publish (moderated) + list community characters
 src/
   characters.ts        built-in character definitions
   store.ts             persisted state (zustand + AsyncStorage)
-  useChat.ts           client streaming hook
+  useChat.ts           client streaming hook (persona + memory in prompt)
+  useGroupChat.ts      multi-character turn-taking
   useVoiceInput.ts     web speech-to-text
+  useAutoSync.ts       pull-on-launch / debounced-push when signed in
   notifications.ts     local re-engagement reminder
-  components/Avatar.tsx image-or-emoji avatar
+  components/          Avatar, MessageContent (markdown + inline images)
 ```
 
-See `FEATURES.md` for the honest parity scorecard against leading apps.
+See `BENCHMARK.md` for the externally-grounded parity comparison (92.3%) and
+`FEATURES.md` for the weighted scorecard.
 
 ### Why a server route?
 

@@ -1,5 +1,6 @@
 import * as Clipboard from "expo-clipboard";
 import { fetch as expoFetch } from "expo/fetch";
+import { useRouter } from "expo-router";
 import {
   Alert,
   Pressable,
@@ -25,7 +26,27 @@ export default function Settings() {
   const userCharacters = useStore((s) => s.userCharacters);
   const upsert = useStore((s) => s.upsertCharacter);
   const clearAllData = useStore((s) => s.clearAllData);
+  const router = useRouter();
+  const activePersona = useStore((s) => s.activePersona());
+  const accountKey = useStore((s) => s.accountKey);
+  const setAccountKey = useStore((s) => s.setAccountKey);
   const syncCode = useStore((s) => s.syncCode);
+
+  const signIn = async () => {
+    // Use the clipboard passphrase as the account key (cross-platform, no
+    // native prompt). Copy a passphrase first; the same one on another device
+    // signs into the same account.
+    const key = (await Clipboard.getStringAsync()).trim();
+    if (key.length < 4) {
+      Alert.alert(
+        "Set a passphrase",
+        "Copy a passphrase (4+ chars) to the clipboard, then tap Sign in. Use the same one on your other devices."
+      );
+      return;
+    }
+    setAccountKey(key);
+    Alert.alert("Signed in", "Your data now syncs automatically on this and any device using the same passphrase.");
+  };
   const exportBlob = useStore((s) => s.exportBlob);
   const importBlob = useStore((s) => s.importBlob);
 
@@ -98,6 +119,13 @@ export default function Settings() {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
+      <Section title="You">
+        <Action
+          label={`Personas${activePersona ? ` · ${activePersona.name}` : ""}`}
+          onPress={() => router.push("/personas")}
+        />
+      </Section>
+
       <Section title="Model">
         {MODELS.map((m) => (
           <Row
@@ -162,7 +190,18 @@ export default function Settings() {
         <Action label="Import from clipboard" onPress={importChars} />
       </Section>
 
-      <Section title="Sync across devices">
+      <Section title="Account">
+        {accountKey ? (
+          <>
+            <Row label="Signed in · auto-sync on" selected onPress={() => {}} />
+            <Action label="Sign out" onPress={() => setAccountKey(null)} />
+          </>
+        ) : (
+          <Action label="Sign in with a passphrase" onPress={signIn} />
+        )}
+      </Section>
+
+      <Section title="Manual sync">
         <Action label={`Back up to cloud (code ${syncCode})`} onPress={uploadSync} />
         <Action label="Restore from clipboard code" onPress={restoreSync} />
       </Section>

@@ -1,3 +1,4 @@
+import { fetch as expoFetch } from "expo/fetch";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
 import {
@@ -38,6 +39,21 @@ export default function CharacterProfile() {
   const startNew = () => {
     const convo = createConversation(id);
     router.push(`/chat/${convo.id}`);
+  };
+
+  const publish = async () => {
+    try {
+      const res = await expoFetch("/api/gallery", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ character }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error || "Publish failed.");
+      Alert.alert("Published", `${character!.name} is now in the community gallery.`);
+    } catch (e: any) {
+      Alert.alert("Not published", e?.message ?? "Publish failed.");
+    }
   };
 
   return (
@@ -130,6 +146,12 @@ export default function CharacterProfile() {
       ) : null}
 
       {!character.builtin ? (
+        <Pressable style={styles.publish} onPress={publish}>
+          <Text style={styles.publishText}>🌐 Publish to community gallery</Text>
+        </Pressable>
+      ) : null}
+
+      {!character.builtin ? (
         <Pressable
           style={styles.delete}
           onPress={() =>
@@ -218,8 +240,16 @@ const styles = StyleSheet.create({
     minHeight: 80,
     textAlignVertical: "top",
   },
+  publish: {
+    marginTop: 24,
+    alignItems: "center",
+    paddingVertical: 14,
+    backgroundColor: "#17171f",
+    borderRadius: 14,
+  },
+  publishText: { color: "#c3b5ff", fontSize: 15, fontWeight: "600" },
   delete: {
-    marginTop: 28,
+    marginTop: 16,
     alignItems: "center",
     paddingVertical: 12,
   },

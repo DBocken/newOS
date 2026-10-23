@@ -1,4 +1,5 @@
 import { fetch as expoFetch } from "expo/fetch";
+import * as ImagePicker from "expo-image-picker";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
 import {
@@ -34,6 +35,21 @@ export default function CreateCharacter() {
   const [mature, setMature] = useState(existing?.mature ?? false);
   const [error, setError] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
+
+  const pickImage = async () => {
+    const res = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.6,
+      base64: true,
+    });
+    if (res.canceled || !res.assets?.length) return;
+    const asset = res.assets[0];
+    setAvatarUrl(
+      asset.base64 ? `data:image/jpeg;base64,${asset.base64}` : asset.uri
+    );
+  };
 
   const generateAvatar = async () => {
     const prompt = `${name || "a character"}. ${tagline}`.trim();
@@ -126,17 +142,22 @@ export default function CreateCharacter() {
       <Field label="Avatar image">
         <View style={styles.avatarRow}>
           <Avatar character={{ emoji, avatarUrl: avatarUrl || undefined }} size={64} />
-          <Pressable
-            style={styles.genBtn}
-            onPress={generateAvatar}
-            disabled={generating}
-          >
-            {generating ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.genText}>✨ Generate with AI</Text>
-            )}
-          </Pressable>
+          <View style={styles.avatarBtns}>
+            <Pressable
+              style={styles.genBtn}
+              onPress={generateAvatar}
+              disabled={generating}
+            >
+              {generating ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.genText}>✨ Generate with AI</Text>
+              )}
+            </Pressable>
+            <Pressable style={styles.uploadBtn} onPress={pickImage}>
+              <Text style={styles.genText}>🖼 Upload photo</Text>
+            </Pressable>
+          </View>
         </View>
         <TextInput
           style={[styles.input, { marginTop: 8 }]}
@@ -255,14 +276,22 @@ const styles = StyleSheet.create({
   area: { minHeight: 64, textAlignVertical: "top" },
   areaTall: { minHeight: 120, textAlignVertical: "top" },
   avatarRow: { flexDirection: "row", alignItems: "center", gap: 14 },
+  avatarBtns: { flex: 1, gap: 8 },
   genBtn: {
-    flex: 1,
     backgroundColor: "#2a2140",
     borderRadius: 12,
-    paddingVertical: 14,
+    paddingVertical: 12,
     alignItems: "center",
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: "#6d4aff",
+  },
+  uploadBtn: {
+    backgroundColor: "#17171f",
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: "center",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "#2c2c38",
   },
   genText: { color: "#c3b5ff", fontSize: 14, fontWeight: "600" },
   emojiRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },

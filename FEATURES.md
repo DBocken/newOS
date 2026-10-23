@@ -1,5 +1,10 @@
 # Feature parity scorecard
 
+> See **BENCHMARK.md** for the externally-grounded comparison (equal-weighted,
+> cited against Character.AI/SpicyChat reviews): **92.3%**. The table below is
+> the author's weighted view; the two agree within ~0.5%.
+
+
 Weighted comparison against leading AI character-chat apps (Character.AI,
 SpicyChat). Full parity = 100 points. The large server/native items are
 included and counted against us, not scoped away.

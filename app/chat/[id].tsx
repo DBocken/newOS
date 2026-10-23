@@ -1,7 +1,7 @@
 import * as Clipboard from "expo-clipboard";
 import * as Haptics from "expo-haptics";
 import * as Speech from "expo-speech";
-import { Stack, useLocalSearchParams } from "expo-router";
+import { Link, Stack, useLocalSearchParams } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import {
   Alert,
@@ -119,6 +119,13 @@ export default function ChatScreen() {
               <Avatar character={character} size={28} />
               <Text style={styles.headerName}>{character.name}</Text>
             </View>
+          ),
+          headerRight: () => (
+            <Link href={`/call/${id}`} asChild>
+              <Pressable hitSlop={10}>
+                <Text style={{ fontSize: 20 }}>📞</Text>
+              </Pressable>
+            </Link>
           ),
         }}
       />
