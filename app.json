@@ -1,0 +1,23 @@
+{
+  "expo": {
+    "name": "newOS Chat",
+    "slug": "newos-chat",
+    "scheme": "newoschat",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "web": {
+      "bundler": "metro",
+      "output": "server"
+    },
+    "plugins": ["expo-router"],
+    "android": {
+      "package": "com.example.newoschat"
+    },
+    "ios": {
+      "bundleIdentifier": "com.example.newoschat",
+      "supportsTablet": true
+    }
+  }
+}
