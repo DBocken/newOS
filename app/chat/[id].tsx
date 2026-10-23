@@ -18,6 +18,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useStore } from "../../src/store";
 import { useChat } from "../../src/useChat";
+import { useVoiceInput } from "../../src/useVoiceInput";
 import { Avatar } from "../../src/components/Avatar";
 
 export default function ChatScreen() {
@@ -45,6 +46,7 @@ export default function ChatScreen() {
   );
   const [draft, setDraft] = useState("");
   const listRef = useRef<FlatList>(null);
+  const voice = useVoiceInput((text) => setDraft((d) => (d ? d + " " : "") + text));
 
   useEffect(() => {
     const t = setTimeout(
@@ -152,6 +154,14 @@ export default function ChatScreen() {
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
       <View style={[styles.inputRow, { paddingBottom: insets.bottom + 8 }]}>
+        {voice.supported ? (
+          <Pressable
+            style={[styles.micBtn, voice.listening && styles.micOn]}
+            onPress={voice.toggle}
+          >
+            <Text style={styles.micText}>{voice.listening ? "●" : "🎤"}</Text>
+          </Pressable>
+        ) : null}
         <TextInput
           style={styles.input}
           value={draft}
@@ -225,4 +235,14 @@ const styles = StyleSheet.create({
   },
   sendBtnDisabled: { opacity: 0.5 },
   sendText: { color: "#fff", fontWeight: "700" },
+  micBtn: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: "#1d1d26",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  micOn: { backgroundColor: "#ff4d6d" },
+  micText: { fontSize: 16, color: "#fff" },
 });

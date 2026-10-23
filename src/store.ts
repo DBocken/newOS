@@ -18,6 +18,7 @@ export type Settings = {
   temperature: number;
   showMature: boolean; // content-filter toggle
   autoSpeak: boolean; // read assistant replies aloud (TTS)
+  dailyReminder: boolean; // local re-engagement notification
   onboarded: boolean;
 };
 
@@ -49,6 +50,17 @@ type State = {
   // settings
   updateSettings: (patch: Partial<Settings>) => void;
   clearAllData: () => void;
+
+  // sync
+  syncCode: string;
+  exportBlob: () => SyncBlob;
+  importBlob: (blob: SyncBlob) => void;
+};
+
+export type SyncBlob = {
+  userCharacters: Character[];
+  conversations: Record<string, Conversation>;
+  favorites: string[];
 };
 
 const DEFAULT_SETTINGS: Settings = {
@@ -56,6 +68,7 @@ const DEFAULT_SETTINGS: Settings = {
   temperature: 0.8,
   showMature: false,
   autoSpeak: false,
+  dailyReminder: false,
   onboarded: false,
 };
 
@@ -183,6 +196,35 @@ export const useStore = create<State>()(
           favorites: [],
           settings: { ...DEFAULT_SETTINGS, onboarded: true },
         }),
+
+      syncCode:
+        (Math.random().toString(36).slice(2, 6) +
+          "-" +
+          Math.random().toString(36).slice(2, 6)).toUpperCase(),
+
+      exportBlob: () => {
+        const s = get();
+        return {
+          userCharacters: s.userCharacters,
+          conversations: s.conversations,
+          favorites: s.favorites,
+        };
+      },
+
+      importBlob: (blob) =>
+        set((s) => ({
+          // Merge: incoming characters/conversations win on id collisions.
+          userCharacters: [
+            ...blob.userCharacters,
+            ...s.userCharacters.filter(
+              (c) => !blob.userCharacters.some((b) => b.id === c.id)
+            ),
+          ],
+          conversations: { ...s.conversations, ...blob.conversations },
+          favorites: Array.from(
+            new Set([...blob.favorites, ...s.favorites])
+          ),
+        })),
     }),
     {
       name: "newos-chat-v1",
@@ -192,6 +234,7 @@ export const useStore = create<State>()(
         conversations: s.conversations,
         favorites: s.favorites,
         settings: s.settings,
+        syncCode: s.syncCode,
       }),
       onRehydrateStorage: () => (state) => {
         state && (state.hydrated = true);

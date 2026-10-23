@@ -1,6 +1,8 @@
+import { fetch as expoFetch } from "expo/fetch";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
 import {
+  ActivityIndicator,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -8,6 +10,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { Avatar } from "../src/components/Avatar";
 import { CATEGORIES, type Character } from "../src/characters";
 import { useStore, uid } from "../src/store";
 
@@ -30,6 +33,29 @@ export default function CreateCharacter() {
   const [cats, setCats] = useState<string[]>(existing?.categories ?? []);
   const [mature, setMature] = useState(existing?.mature ?? false);
   const [error, setError] = useState<string | null>(null);
+  const [generating, setGenerating] = useState(false);
+
+  const generateAvatar = async () => {
+    const prompt = `${name || "a character"}. ${tagline}`.trim();
+    setGenerating(true);
+    setError(null);
+    try {
+      const res = await expoFetch("/api/avatar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json?.dataUri) {
+        throw new Error(json?.error || "Could not generate avatar.");
+      }
+      setAvatarUrl(json.dataUri);
+    } catch (e: any) {
+      setError(e?.message ?? "Avatar generation failed.");
+    } finally {
+      setGenerating(false);
+    }
+  };
 
   const toggleCat = (c: string) =>
     setCats((prev) =>
@@ -97,12 +123,26 @@ export default function CreateCharacter() {
         </View>
       </Field>
 
-      <Field label="Avatar image URL (optional)">
+      <Field label="Avatar image">
+        <View style={styles.avatarRow}>
+          <Avatar character={{ emoji, avatarUrl: avatarUrl || undefined }} size={64} />
+          <Pressable
+            style={styles.genBtn}
+            onPress={generateAvatar}
+            disabled={generating}
+          >
+            {generating ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.genText}>✨ Generate with AI</Text>
+            )}
+          </Pressable>
+        </View>
         <TextInput
-          style={styles.input}
-          value={avatarUrl}
+          style={[styles.input, { marginTop: 8 }]}
+          value={avatarUrl.startsWith("data:") ? "" : avatarUrl}
           onChangeText={setAvatarUrl}
-          placeholder="https://…"
+          placeholder="…or paste an image URL"
           placeholderTextColor="#6b6b78"
           autoCapitalize="none"
         />
@@ -214,6 +254,17 @@ const styles = StyleSheet.create({
   },
   area: { minHeight: 64, textAlignVertical: "top" },
   areaTall: { minHeight: 120, textAlignVertical: "top" },
+  avatarRow: { flexDirection: "row", alignItems: "center", gap: 14 },
+  genBtn: {
+    flex: 1,
+    backgroundColor: "#2a2140",
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: "center",
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "#6d4aff",
+  },
+  genText: { color: "#c3b5ff", fontSize: 14, fontWeight: "600" },
   emojiRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   emojiBtn: {
     width: 44,

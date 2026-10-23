@@ -14,15 +14,26 @@ calls OpenAI with streaming enabled and pipes the text back token by token.
 
 ```
 app/
-  _layout.tsx         navigation shell (dark theme)
-  index.tsx           character grid (home screen)
-  chat/[id].tsx       chat screen with streaming bubbles
-  api/chat+api.ts     server route -> OpenAI (holds the API key)
+  _layout.tsx          navigation shell (dark theme)
+  index.tsx            discovery: search, categories, favorites
+  character/[id].tsx   character profile + conversation list
+  chat/[id].tsx        chat: streaming, TTS, copy/regen/delete, mic (web STT)
+  create.tsx           create / edit characters (+ AI avatar generation)
+  settings.tsx         model, temperature, content filter, sync, reminders
+  onboarding.tsx       first-run intro
+  api/chat+api.ts      server route -> OpenAI (streaming + moderation)
+  api/avatar+api.ts    server route -> OpenAI images (avatar generation)
+  api/sync+api.ts      cross-device sync by code
 src/
-  characters.ts       character definitions (edit these!)
-  types.ts            shared message types
-  useChat.ts          client streaming hook
+  characters.ts        built-in character definitions
+  store.ts             persisted state (zustand + AsyncStorage)
+  useChat.ts           client streaming hook
+  useVoiceInput.ts     web speech-to-text
+  notifications.ts     local re-engagement reminder
+  components/Avatar.tsx image-or-emoji avatar
 ```
+
+See `FEATURES.md` for the honest parity scorecard against leading apps.
 
 ### Why a server route?
 

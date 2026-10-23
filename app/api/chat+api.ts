@@ -17,6 +17,24 @@ const ALLOWED_MODELS = new Set([
   "o1-mini",
 ]);
 
+async function isFlagged(text: string, apiKey: string): Promise<boolean> {
+  try {
+    const res = await fetch("https://api.openai.com/v1/moderations", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({ model: "omni-moderation-latest", input: text }),
+    });
+    if (!res.ok) return false; // fail open
+    const json = await res.json();
+    return Boolean(json?.results?.[0]?.flagged);
+  } catch {
+    return false; // fail open
+  }
+}
+
 export async function POST(request: Request) {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
@@ -52,6 +70,19 @@ export async function POST(request: Request) {
     typeof body.temperature === "number"
       ? Math.max(0, Math.min(2, body.temperature))
       : 0.8;
+
+  // Safety pipeline: screen the latest user message. Fails open on error so a
+  // moderation outage doesn't break chat, but blocks clearly-flagged input.
+  const lastUser = [...messages].reverse().find((m) => m.role === "user");
+  if (lastUser) {
+    const flagged = await isFlagged(lastUser.content, apiKey);
+    if (flagged) {
+      return new Response(
+        "I can't help with that. Let's keep things respectful — try a different message.",
+        { headers: { "Content-Type": "text/plain; charset=utf-8" } }
+      );
+    }
+  }
 
   const upstream = await fetch(OPENAI_URL, {
     method: "POST",

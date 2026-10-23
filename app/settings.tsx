@@ -1,4 +1,5 @@
 import * as Clipboard from "expo-clipboard";
+import { fetch as expoFetch } from "expo/fetch";
 import {
   Alert,
   Pressable,
@@ -8,6 +9,7 @@ import {
   View,
 } from "react-native";
 import type { Character } from "../src/characters";
+import { disableDailyReminder, enableDailyReminder } from "../src/notifications";
 import { useStore } from "../src/store";
 
 const MODELS = ["gpt-4o-mini", "gpt-4o", "gpt-4.1-mini", "gpt-4.1", "o1-mini"];
@@ -23,6 +25,46 @@ export default function Settings() {
   const userCharacters = useStore((s) => s.userCharacters);
   const upsert = useStore((s) => s.upsertCharacter);
   const clearAllData = useStore((s) => s.clearAllData);
+  const syncCode = useStore((s) => s.syncCode);
+  const exportBlob = useStore((s) => s.exportBlob);
+  const importBlob = useStore((s) => s.importBlob);
+
+  const uploadSync = async () => {
+    try {
+      const res = await expoFetch("/api/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code: syncCode, blob: exportBlob() }),
+      });
+      if (!res.ok) throw new Error();
+      await Clipboard.setStringAsync(syncCode);
+      Alert.alert(
+        "Backed up",
+        `Saved under code ${syncCode} (copied to clipboard). Enter it on another device to restore.`
+      );
+    } catch {
+      Alert.alert("Sync failed", "Could not reach the sync server.");
+    }
+  };
+
+  // Cross-platform restore: the code is taken from the clipboard (paste the
+  // code you copied on the other device first).
+  const restoreSync = async () => {
+    const code = (await Clipboard.getStringAsync()).trim();
+    if (!code) {
+      Alert.alert("No code", "Copy a sync code to the clipboard first.");
+      return;
+    }
+    try {
+      const res = await expoFetch(`/api/sync?code=${encodeURIComponent(code)}`);
+      const json = await res.json();
+      if (!res.ok || !json?.blob) throw new Error();
+      importBlob(json.blob);
+      Alert.alert("Restored", `Merged in data from code ${code}.`);
+    } catch {
+      Alert.alert("Restore failed", "No data found for that code.");
+    }
+  };
 
   const exportChars = async () => {
     if (!userCharacters.length) {
@@ -94,9 +136,35 @@ export default function Settings() {
         />
       </Section>
 
+      <Section title="Notifications">
+        <Toggle
+          label="Daily check-in reminder"
+          value={settings.dailyReminder}
+          onPress={async () => {
+            if (settings.dailyReminder) {
+              await disableDailyReminder();
+              update({ dailyReminder: false });
+            } else {
+              const ok = await enableDailyReminder();
+              if (ok) update({ dailyReminder: true });
+              else
+                Alert.alert(
+                  "Permission needed",
+                  "Enable notifications for this app to get reminders."
+                );
+            }
+          }}
+        />
+      </Section>
+
       <Section title="Your characters">
         <Action label="Export to clipboard" onPress={exportChars} />
         <Action label="Import from clipboard" onPress={importChars} />
+      </Section>
+
+      <Section title="Sync across devices">
+        <Action label={`Back up to cloud (code ${syncCode})`} onPress={uploadSync} />
+        <Action label="Restore from clipboard code" onPress={restoreSync} />
       </Section>
 
       <Section title="Data">
