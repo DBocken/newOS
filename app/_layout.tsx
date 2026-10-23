@@ -24,29 +24,29 @@ export default function RootLayout() {
             headerRight: () => (
               <View style={{ flexDirection: "row", gap: 18, alignItems: "center" }}>
                 <Link href="/search" asChild>
-                  <Pressable hitSlop={10}>
+                  <Pressable hitSlop={10} accessibilityRole="button" accessibilityLabel="Search">
                     <Text style={{ fontSize: 18 }}>🔍</Text>
                   </Pressable>
                 </Link>
                 <Link href="/gallery" asChild>
-                  <Pressable hitSlop={10}>
+                  <Pressable hitSlop={10} accessibilityRole="button" accessibilityLabel="Community gallery">
                     <Text style={{ fontSize: 18 }}>🌐</Text>
                   </Pressable>
                 </Link>
                 <Link href="/group-new" asChild>
-                  <Pressable hitSlop={10}>
+                  <Pressable hitSlop={10} accessibilityRole="button" accessibilityLabel="New group chat">
                     <Text style={{ fontSize: 18 }}>👥</Text>
                   </Pressable>
                 </Link>
                 <Link href="/create" asChild>
-                  <Pressable hitSlop={10}>
+                  <Pressable hitSlop={10} accessibilityRole="button" accessibilityLabel="Create character">
                     <Text style={{ color: "#6d4aff", fontSize: 26, fontWeight: "600" }}>
                       ＋
                     </Text>
                   </Pressable>
                 </Link>
                 <Link href="/settings" asChild>
-                  <Pressable hitSlop={10}>
+                  <Pressable hitSlop={10} accessibilityRole="button" accessibilityLabel="Settings">
                     <Text style={{ fontSize: 20 }}>⚙️</Text>
                   </Pressable>
                 </Link>

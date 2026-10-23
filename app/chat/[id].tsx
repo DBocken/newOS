@@ -213,9 +213,12 @@ export default function ChatScreen() {
         <Pressable
           style={[styles.sendBtn, isStreaming && styles.sendBtnDisabled]}
           disabled={isStreaming}
+          accessibilityRole="button"
+          accessibilityLabel="Send message"
           onPress={() => {
             const t = draft;
             setDraft("");
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
             send(t);
           }}
         >
