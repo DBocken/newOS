@@ -114,15 +114,84 @@ export function useChat(conversationId: string, character: Character) {
     [conversationId, getConversation, isStreaming, stream]
   );
 
-  // Re-run the model from the last user message, discarding the last reply.
+  // Regenerate the last reply but KEEP the previous one as an alternative the
+  // user can swipe back to (Character.AI-style). Streams the new variant into
+  // the last bubble, then folds both into its `alternatives` list.
   const regenerate = useCallback(async () => {
     if (isStreaming) return;
     const current = getConversation(conversationId)?.messages ?? [];
-    let cut = [...current];
-    while (cut.length && cut[cut.length - 1].role === "assistant") cut.pop();
-    if (!cut.length) return;
-    await stream(cut);
-  }, [conversationId, getConversation, isStreaming, stream]);
+    if (!current.length || current[current.length - 1].role !== "assistant")
+      return;
+    const lastIdx = current.length - 1;
+    const prev = current[lastIdx];
+    const prevAlts =
+      prev.alternatives && prev.alternatives.length
+        ? prev.alternatives
+        : [prev.content];
+    const history = current.slice(0, lastIdx);
 
-  return { messages, send, regenerate, isStreaming, error };
+    setError(null);
+    setIsStreaming(true);
+    const writeLast = (patch: Partial<ChatMessage>) => {
+      const msgs = getConversation(conversationId)?.messages ?? current;
+      const next = [...msgs];
+      next[lastIdx] = { ...next[lastIdx], ...patch };
+      setStoreMessages(conversationId, next);
+    };
+
+    try {
+      const res = await expoFetch(CHAT_ENDPOINT, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          systemPrompt: buildSystemPrompt(character.systemPrompt, memory, persona),
+          messages: trimForModel(history),
+          model,
+          temperature,
+        }),
+      });
+      if (!res.ok || !res.body) {
+        const detail = await res.text().catch(() => "");
+        throw new Error(detail || `Request failed (${res.status})`);
+      }
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let acc = "";
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        acc += decoder.decode(value, { stream: true });
+        writeLast({ content: acc });
+      }
+      const alternatives = [...prevAlts, acc];
+      writeLast({ content: acc, alternatives, altIndex: alternatives.length - 1 });
+    } catch (e: any) {
+      setError(e?.message ?? "Something went wrong.");
+      writeLast({ content: prevAlts[prevAlts.length - 1] });
+    } finally {
+      setIsStreaming(false);
+    }
+  }, [conversationId, getConversation, isStreaming, character, memory, persona, model, temperature, setStoreMessages]);
+
+  // Switch which stored alternative is shown for a message.
+  const cycleAlt = useCallback(
+    (index: number, dir: 1 | -1) => {
+      const msgs = getConversation(conversationId)?.messages ?? [];
+      const m = msgs[index];
+      if (!m?.alternatives?.length) return;
+      const n = m.alternatives.length;
+      const cur = m.altIndex ?? n - 1;
+      const nextIdx = (cur + dir + n) % n;
+      const next = [...msgs];
+      next[index] = {
+        ...m,
+        altIndex: nextIdx,
+        content: m.alternatives[nextIdx],
+      };
+      setStoreMessages(conversationId, next);
+    },
+    [conversationId, getConversation, setStoreMessages]
+  );
+
+  return { messages, send, regenerate, cycleAlt, isStreaming, error };
 }

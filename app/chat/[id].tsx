@@ -41,7 +41,7 @@ export default function ChatScreen() {
     );
   }
 
-  const { messages, send, regenerate, isStreaming, error } = useChat(
+  const { messages, send, regenerate, cycleAlt, isStreaming, error } = useChat(
     id,
     character
   );
@@ -148,6 +148,20 @@ export default function ChatScreen() {
               ) : (
                 <Text style={styles.bubbleText}>{isStreaming ? "…" : ""}</Text>
               )}
+              {!mine && item.alternatives && item.alternatives.length > 1 ? (
+                <View style={styles.altRow}>
+                  <Pressable hitSlop={8} onPress={() => cycleAlt(index, -1)}>
+                    <Text style={styles.altArrow}>‹</Text>
+                  </Pressable>
+                  <Text style={styles.altCount}>
+                    {(item.altIndex ?? item.alternatives.length - 1) + 1}/
+                    {item.alternatives.length}
+                  </Text>
+                  <Pressable hitSlop={8} onPress={() => cycleAlt(index, 1)}>
+                    <Text style={styles.altArrow}>›</Text>
+                  </Pressable>
+                </View>
+              ) : null}
             </Pressable>
           );
         }}
@@ -217,6 +231,15 @@ const styles = StyleSheet.create({
   mine: { alignSelf: "flex-end", backgroundColor: "#6d4aff" },
   theirs: { alignSelf: "flex-start", backgroundColor: "#1d1d26" },
   bubbleText: { color: "#fff", fontSize: 15, lineHeight: 21 },
+  altRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginTop: 8,
+    alignSelf: "flex-start",
+  },
+  altArrow: { color: "#c3b5ff", fontSize: 20, fontWeight: "700" },
+  altCount: { color: "#9a9aa8", fontSize: 12 },
   starters: { paddingHorizontal: 10, paddingBottom: 8, gap: 8 },
   starterChip: {
     backgroundColor: "#1d1d26",
