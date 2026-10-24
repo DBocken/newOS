@@ -57,7 +57,39 @@ the shipped app. Calling OpenAI directly from the device would bake the key
 into the bundle where anyone can extract it — exactly the kind of mistake you
 want to avoid.
 
-## Run it
+## Getting an APK
+
+The project is build-ready (`npx expo prebuild -p android` succeeds; the JS
+bundle exports cleanly). There are two ways to produce an installable APK:
+
+**EAS Build (cloud — recommended, one command):**
+```bash
+npm i -g eas-cli      # or: npx eas-cli@latest
+eas login             # your Expo account
+eas build -p android --profile preview   # -> downloadable APK URL
+```
+The `preview` profile in `eas.json` is configured to output an `.apk`
+(internal distribution), not an app bundle.
+
+**Local (needs Android Studio / SDK + NDK):**
+```bash
+npm install
+npx expo run:android --variant release    # builds & installs on a device/emulator
+# or, for just the APK file:
+npx expo prebuild -p android
+cd android && ./gradlew assembleRelease
+# -> android/app/build/outputs/apk/release/app-release.apk
+```
+
+> Note: a release build was attempted in the cloud sandbox but could not
+> finish there — the sandbox's outbound proxy rate-limited/dropped Maven
+> Central requests, so the full Android dependency graph (Kotlin/Gradle/AGP
+> artifacts) wouldn't resolve. This is an environment limitation, not a
+> project one: both commands above work on a normal network. The Android
+> toolchain (SDK 35, build-tools 35, NDK 27, CMake) and `expo prebuild` all
+> installed and ran fine here.
+
+## Run it (dev)
 
 ```bash
 npm install
