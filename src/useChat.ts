@@ -1,5 +1,6 @@
 import { useCallback, useState } from "react";
 import { fetch as expoFetch } from "expo/fetch";
+import { apiUrl } from "./api";
 import type { Character } from "./characters";
 import { useStore } from "./store";
 import { buildSystemPrompt } from "./prompt";
@@ -8,8 +9,6 @@ import { trimForModel } from "./context";
 export { buildSystemPrompt };
 import type { ChatMessage } from "./types";
 
-// Points the client at the API route. In Expo dev, same origin works via a
-// relative path; expo/fetch resolves it against the dev server.
 const CHAT_ENDPOINT = "/api/chat";
 
 export function useChat(conversationId: string, character: Character) {
@@ -36,7 +35,7 @@ export function useChat(conversationId: string, character: Character) {
       setIsStreaming(true);
 
       try {
-        const res = await expoFetch(CHAT_ENDPOINT, {
+        const res = await expoFetch(apiUrl(CHAT_ENDPOINT), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -115,7 +114,7 @@ export function useChat(conversationId: string, character: Character) {
     };
 
     try {
-      const res = await expoFetch(CHAT_ENDPOINT, {
+      const res = await expoFetch(apiUrl(CHAT_ENDPOINT), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

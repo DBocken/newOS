@@ -1,4 +1,5 @@
 import { fetch as expoFetch } from "expo/fetch";
+import { apiUrl } from "../src/api";
 import * as ImagePicker from "expo-image-picker";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
@@ -56,7 +57,7 @@ export default function CreateCharacter() {
     setGenerating(true);
     setError(null);
     try {
-      const res = await expoFetch("/api/avatar", {
+      const res = await expoFetch(apiUrl("/api/avatar"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt }),

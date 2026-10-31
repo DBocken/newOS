@@ -1,4 +1,5 @@
 import { fetch as expoFetch } from "expo/fetch";
+import { apiUrl } from "../../src/api";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
 import {
@@ -43,7 +44,7 @@ export default function CharacterProfile() {
 
   const publish = async () => {
     try {
-      const res = await expoFetch("/api/gallery", {
+      const res = await expoFetch(apiUrl("/api/gallery"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ character }),

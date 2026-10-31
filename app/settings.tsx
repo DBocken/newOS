@@ -1,5 +1,6 @@
 import * as Clipboard from "expo-clipboard";
 import { fetch as expoFetch } from "expo/fetch";
+import { apiUrl } from "../src/api";
 import { useRouter } from "expo-router";
 import {
   Alert,
@@ -52,7 +53,7 @@ export default function Settings() {
 
   const uploadSync = async () => {
     try {
-      const res = await expoFetch("/api/sync", {
+      const res = await expoFetch(apiUrl("/api/sync"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ code: syncCode, blob: exportBlob() }),
@@ -77,7 +78,7 @@ export default function Settings() {
       return;
     }
     try {
-      const res = await expoFetch(`/api/sync?code=${encodeURIComponent(code)}`);
+      const res = await expoFetch(apiUrl(`/api/sync?code=${encodeURIComponent(code)}`));
       const json = await res.json();
       if (!res.ok || !json?.blob) throw new Error();
       importBlob(json.blob);

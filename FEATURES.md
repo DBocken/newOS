@@ -61,9 +61,7 @@ STT gets partial credit because it works in the web build but not natively.
 ### Verification (independent of the self-scored table)
 
 - `npx tsc --noEmit` → passes (0 errors)
-- `npx expo export -p android` → full JS graph bundles (1.8 MB, exit 0).
-  The Hermes bytecode step fails only in this sandbox container; the JS bundle
-  builds cleanly with the JSC engine, and Hermes runs normally on EAS.
+- `npx expo export -p android` → Hermes bytecode bundle builds (2.86 MB, exit 0).
 
 ### Reproduce the score
 

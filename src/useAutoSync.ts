@@ -1,4 +1,5 @@
 import { fetch as expoFetch } from "expo/fetch";
+import { apiUrl } from "./api";
 import { useEffect, useRef } from "react";
 import { useStore } from "./store";
 
@@ -24,7 +25,7 @@ export function useAutoSync() {
     (async () => {
       try {
         const res = await expoFetch(
-          `/api/sync?code=${encodeURIComponent(accountKey)}`
+          apiUrl(`/api/sync?code=${encodeURIComponent(accountKey)}`)
         );
         if (!res.ok) return;
         const json = await res.json();
@@ -41,7 +42,7 @@ export function useAutoSync() {
     if (pushTimer.current) clearTimeout(pushTimer.current);
     pushTimer.current = setTimeout(async () => {
       try {
-        await expoFetch("/api/sync", {
+        await expoFetch(apiUrl("/api/sync"), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

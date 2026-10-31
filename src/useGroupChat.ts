@@ -1,5 +1,6 @@
 import { useCallback, useState } from "react";
 import { fetch as expoFetch } from "expo/fetch";
+import { apiUrl } from "./api";
 import type { Character } from "./characters";
 import { useStore } from "./store";
 import { groupViewFor } from "./context";
@@ -14,7 +15,7 @@ async function complete(
   model: string,
   temperature: number
 ): Promise<string> {
-  const res = await expoFetch(CHAT_ENDPOINT, {
+  const res = await expoFetch(apiUrl(CHAT_ENDPOINT), {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ systemPrompt, messages, model, temperature }),

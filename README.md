@@ -59,8 +59,12 @@ want to avoid.
 
 ## Getting an APK
 
-The project is build-ready (`npx expo prebuild -p android` succeeds; the JS
-bundle exports cleanly). There are two ways to produce an installable APK:
+An installed app has no server of its own, so AI chat, avatars, sync and the
+gallery only work once the API routes are deployed and `EXPO_PUBLIC_API_URL`
+points at them when the APK is built. Without it the app still opens, and those
+features show "No server configured".
+
+There are two ways to produce an installable APK:
 
 **EAS Build (cloud — recommended, one command):**
 ```bash
@@ -101,9 +105,8 @@ Open in Expo Go (scan the QR code) or press `w` for web. The API route needs
 the Expo dev server running (it serves `/api/chat`).
 
 > Note: Expo API routes require the server output target (already set in
-> `app.json`). For a standalone native build you'd deploy the API route to a
-> host (EAS Hosting, Vercel, your own server) and point `CHAT_ENDPOINT` in
-> `src/useChat.ts` at its URL.
+> `app.json`). For a standalone native build, deploy the API routes to a host
+> and set `EXPO_PUBLIC_API_URL` to its URL.
 
 ## Add a character
 
