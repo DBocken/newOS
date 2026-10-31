@@ -4,6 +4,7 @@ import type { Character } from "../src/characters";
 import { Avatar } from "../src/components/Avatar";
 import type { Conversation } from "../src/store";
 import { useStore } from "../src/store";
+import { useShallow } from "zustand/react/shallow";
 
 type TopCharacter = {
   character: Character;
@@ -11,7 +12,7 @@ type TopCharacter = {
 };
 
 export default function Stats() {
-  const characters = useStore((s) => s.allCharacters());
+  const characters = useStore(useShallow((s) => s.allCharacters()));
   const conversations = useStore((s) => s.conversations);
 
   const convoList: Conversation[] = Object.values(conversations);

@@ -16,7 +16,8 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useStore } from "../../src/store";
+import type { Character } from "../../src/characters";
+import { useStore, type Conversation } from "../../src/store";
 import { useChat } from "../../src/useChat";
 import { useVoiceInput } from "../../src/useVoiceInput";
 import { Avatar } from "../../src/components/Avatar";
@@ -26,12 +27,8 @@ import { conversationToMarkdown } from "../../src/exportChat";
 export default function ChatScreen() {
   // `id` here is the conversation id.
   const { id } = useLocalSearchParams<{ id: string }>();
-  const insets = useSafeAreaInsets();
-
   const convo = useStore((s) => s.conversations[id]);
   const getCharacter = useStore((s) => s.getCharacter);
-  const setStoreMessages = useStore((s) => s.setMessages);
-  const autoSpeak = useStore((s) => s.settings.autoSpeak);
   const character = convo ? getCharacter(convo.characterId) : undefined;
 
   if (!convo || !character) {
@@ -42,6 +39,21 @@ export default function ChatScreen() {
     );
   }
 
+  return <Chat id={id} convo={convo} character={character} />;
+}
+
+function Chat({
+  id,
+  convo,
+  character,
+}: {
+  id: string;
+  convo: Conversation;
+  character: Character;
+}) {
+  const insets = useSafeAreaInsets();
+  const setStoreMessages = useStore((s) => s.setMessages);
+  const autoSpeak = useStore((s) => s.settings.autoSpeak);
   const { messages, send, regenerate, cycleAlt, isStreaming, error } = useChat(
     id,
     character
@@ -82,7 +94,7 @@ export default function ChatScreen() {
   };
 
   const onLongPress = (index: number, content: string, isAssistant: boolean) => {
-    Haptics.selectionAsync();
+    if (Platform.OS !== "web") Haptics.selectionAsync();
     const options: any[] = [
       { text: "Copy", onPress: () => Clipboard.setStringAsync(content) },
       { text: "Speak", onPress: () => Speech.speak(content) },
@@ -218,7 +230,9 @@ export default function ChatScreen() {
           onPress={() => {
             const t = draft;
             setDraft("");
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            if (Platform.OS !== "web") {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            }
             send(t);
           }}
         >

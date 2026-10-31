@@ -2,6 +2,7 @@ import * as Speech from "expo-speech";
 import { Stack, useLocalSearchParams } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
+import type { Character } from "../../src/characters";
 import { Avatar } from "../../src/components/Avatar";
 import { useStore } from "../../src/store";
 import { useChat } from "../../src/useChat";
@@ -23,6 +24,10 @@ export default function CallScreen() {
     );
   }
 
+  return <Call id={id} character={character} />;
+}
+
+function Call({ id, character }: { id: string; character: Character }) {
   const { messages, send, isStreaming } = useChat(id, character);
   const [state, setState] = useState<CallState>("off");
   const voice = useVoiceInput((text) => {

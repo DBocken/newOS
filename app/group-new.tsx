@@ -3,10 +3,11 @@ import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Avatar } from "../src/components/Avatar";
 import { useStore } from "../src/store";
+import { useShallow } from "zustand/react/shallow";
 
 export default function NewGroup() {
   const router = useRouter();
-  const all = useStore((s) => s.allCharacters());
+  const all = useStore(useShallow((s) => s.allCharacters()));
   const createGroup = useStore((s) => s.createGroup);
   const [selected, setSelected] = useState<string[]>([]);
 

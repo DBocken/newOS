@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { Avatar } from "../../src/components/Avatar";
 import { useStore } from "../../src/store";
+import { useShallow } from "zustand/react/shallow";
 
 export default function CharacterProfile() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -20,7 +21,7 @@ export default function CharacterProfile() {
   const character = useStore((s) => s.getCharacter(id));
   const isFav = useStore((s) => s.favorites.includes(id));
   const toggleFavorite = useStore((s) => s.toggleFavorite);
-  const conversations = useStore((s) => s.conversationsFor(id));
+  const conversations = useStore(useShallow((s) => s.conversationsFor(id)));
   const createConversation = useStore((s) => s.createConversation);
   const deleteConversation = useStore((s) => s.deleteConversation);
   const deleteCharacter = useStore((s) => s.deleteCharacter);

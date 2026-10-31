@@ -12,11 +12,12 @@ import {
 import { CATEGORIES, type Character } from "../src/characters";
 import { Avatar } from "../src/components/Avatar";
 import { useStore } from "../src/store";
+import { useShallow } from "zustand/react/shallow";
 import { useHydrated } from "../src/useHydrated";
 
 export default function Discovery() {
   const router = useRouter();
-  const all = useStore((s) => s.allCharacters());
+  const all = useStore(useShallow((s) => s.allCharacters()));
   const showMature = useStore((s) => s.settings.showMature);
   const favorites = useStore((s) => s.favorites);
   const hydrated = useHydrated();
@@ -130,7 +131,12 @@ function Card({ character }: { character: Character }) {
           <Avatar character={character} size={48} />
           <Pressable
             hitSlop={10}
-            onPress={() => toggleFavorite(character.id)}
+            onPress={(e) => {
+              // The heart sits inside the card's link; don't open the profile.
+              e.preventDefault();
+              e.stopPropagation();
+              toggleFavorite(character.id);
+            }}
           >
             <Text style={styles.heart}>{isFav ? "♥" : "♡"}</Text>
           </Pressable>

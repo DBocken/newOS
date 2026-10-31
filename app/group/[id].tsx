@@ -11,13 +11,13 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import type { Character } from "../../src/characters";
 import { MessageContent } from "../../src/components/MessageContent";
 import { useStore } from "../../src/store";
 import { useGroupChat } from "../../src/useGroupChat";
 
 export default function GroupChatScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const insets = useSafeAreaInsets();
   const convo = useStore((s) => s.conversations[id]);
   const getCharacter = useStore((s) => s.getCharacter);
 
@@ -33,6 +33,19 @@ export default function GroupChatScreen() {
     .map((mid) => getCharacter(mid))
     .filter((c): c is NonNullable<typeof c> => !!c);
 
+  return <GroupChat id={id} title={convo.title} members={members} />;
+}
+
+function GroupChat({
+  id,
+  title,
+  members,
+}: {
+  id: string;
+  title: string;
+  members: Character[];
+}) {
+  const insets = useSafeAreaInsets();
   const { messages, send, busy, error } = useGroupChat(id, members);
   const [draft, setDraft] = useState("");
   const listRef = useRef<FlatList>(null);
@@ -51,7 +64,7 @@ export default function GroupChatScreen() {
       behavior={Platform.OS === "ios" ? "padding" : undefined}
       keyboardVerticalOffset={insets.top + 44}
     >
-      <Stack.Screen options={{ title: convo.title }} />
+      <Stack.Screen options={{ title }} />
 
       <FlatList
         ref={listRef}
