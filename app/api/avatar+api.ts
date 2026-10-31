@@ -2,55 +2,58 @@
 // OpenAI's image API for a square portrait and return it as a data URI so the
 // client can store/display it without any extra hosting. Key stays on server.
 
+import {
+  fail,
+  guarded,
+  isFlagged,
+  rateLimit,
+  readJson,
+  requireAccess,
+  requireOpenAIKey,
+} from "../../src/server/security";
+
 const IMAGE_URL = "https://api.openai.com/v1/images/generations";
 const IMAGE_MODEL = process.env.OPENAI_IMAGE_MODEL ?? "gpt-image-1";
 
-export async function POST(request: Request) {
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) {
-    return Response.json({ error: "OPENAI_API_KEY is not set." }, { status: 500 });
+export const POST = guarded(async (request) => {
+  const caller = requireAccess(request);
+  rateLimit(`avatar:${caller}`, 10, 60 * 60_000); // images are the costly call
+  const apiKey = requireOpenAIKey();
+
+  const body = await readJson(request, 4_000);
+  const prompt = typeof body?.prompt === "string" ? body.prompt.slice(0, 400) : "";
+  if (!prompt.trim()) return fail(400, "Prompt is required.");
+  if (await isFlagged(prompt, apiKey)) {
+    return fail(422, "That description didn't pass the safety check.");
   }
 
-  let prompt = "";
+  let res: Response;
   try {
-    prompt = String((await request.json())?.prompt ?? "").slice(0, 400);
+    res = await fetch(IMAGE_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: IMAGE_MODEL,
+        prompt: `Portrait avatar, friendly, centered, simple background. ${prompt}`,
+        size: "1024x1024",
+        n: 1,
+      }),
+      signal: AbortSignal.timeout(120_000),
+    });
   } catch {
-    return Response.json({ error: "Invalid JSON body." }, { status: 400 });
+    return fail(502, "The image service can't be reached right now.");
   }
-  if (!prompt.trim()) {
-    return Response.json({ error: "Prompt is required." }, { status: 400 });
-  }
-
-  const res = await fetch(IMAGE_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model: IMAGE_MODEL,
-      prompt: `Portrait avatar, friendly, centered, simple background. ${prompt}`,
-      size: "1024x1024",
-      n: 1,
-    }),
-  });
 
   if (!res.ok) {
-    const detail = await res.text().catch(() => "");
-    return Response.json(
-      { error: `Image API error (${res.status}): ${detail}` },
-      { status: 502 }
-    );
+    console.error("OpenAI image error:", res.status);
+    return fail(502, "The image service couldn't create that avatar.");
   }
 
   const json = await res.json();
   const b64: string | undefined = json?.data?.[0]?.b64_json;
-  const url: string | undefined = json?.data?.[0]?.url;
-  if (b64) {
-    return Response.json({ dataUri: `data:image/png;base64,${b64}` });
-  }
-  if (url) {
-    return Response.json({ dataUri: url });
-  }
-  return Response.json({ error: "No image returned." }, { status: 502 });
-}
+  if (!b64) return fail(502, "No image was returned.");
+  return Response.json({ dataUri: `data:image/png;base64,${b64}` });
+});

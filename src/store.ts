@@ -37,7 +37,6 @@ type State = {
   personas: Persona[]; // user identities
   activePersonaId: string | null;
   settings: Settings;
-  hydrated: boolean;
 
   // characters
   allCharacters: () => Character[];
@@ -72,14 +71,11 @@ type State = {
   updateSettings: (patch: Partial<Settings>) => void;
   clearAllData: () => void;
 
-  // sync
-  syncCode: string;
+  // sync (the key itself lives in secure storage, see src/secrets.ts)
+  syncEnabled: boolean;
+  setSyncEnabled: (enabled: boolean) => void;
   exportBlob: () => SyncBlob;
   importBlob: (blob: SyncBlob) => void;
-
-  // account (passphrase-based auto-sync)
-  accountKey: string | null;
-  setAccountKey: (key: string | null) => void;
 };
 
 export type SyncBlob = {
@@ -111,7 +107,6 @@ export const useStore = create<State>()(
       personas: [],
       activePersonaId: null,
       settings: DEFAULT_SETTINGS,
-      hydrated: false,
 
       allCharacters: () => [...get().userCharacters, ...CHARACTERS],
 
@@ -278,10 +273,8 @@ export const useStore = create<State>()(
           settings: { ...DEFAULT_SETTINGS, onboarded: true },
         }),
 
-      syncCode:
-        (Math.random().toString(36).slice(2, 6) +
-          "-" +
-          Math.random().toString(36).slice(2, 6)).toUpperCase(),
+      syncEnabled: false,
+      setSyncEnabled: (enabled) => set({ syncEnabled: enabled }),
 
       exportBlob: () => {
         const s = get();
@@ -292,9 +285,6 @@ export const useStore = create<State>()(
           memories: s.memories,
         };
       },
-
-      accountKey: null,
-      setAccountKey: (key) => set({ accountKey: key }),
 
       importBlob: (blob) =>
         set((s) => ({
@@ -323,12 +313,8 @@ export const useStore = create<State>()(
         personas: s.personas,
         activePersonaId: s.activePersonaId,
         settings: s.settings,
-        syncCode: s.syncCode,
-        accountKey: s.accountKey,
+        syncEnabled: s.syncEnabled,
       }),
-      onRehydrateStorage: () => (state) => {
-        state && (state.hydrated = true);
-      },
     }
   )
 );

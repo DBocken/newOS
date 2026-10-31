@@ -1,5 +1,4 @@
-import { fetch as expoFetch } from "expo/fetch";
-import { apiUrl } from "../../src/api";
+import { apiError, apiFetch } from "../../src/api";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
 import {
@@ -44,13 +43,12 @@ export default function CharacterProfile() {
 
   const publish = async () => {
     try {
-      const res = await expoFetch(apiUrl("/api/gallery"), {
+      const res = await apiFetch("/api/gallery", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ character }),
       });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json?.error || "Publish failed.");
+      if (!res.ok) throw new Error(await apiError(res));
       Alert.alert("Published", `${character!.name} is now in the community gallery.`);
     } catch (e: any) {
       Alert.alert("Not published", e?.message ?? "Publish failed.");

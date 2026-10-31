@@ -1,52 +1,60 @@
-// Minimal cross-device sync. The client uploads its data blob (characters,
-// conversations, favorites) under a sync code and can pull it on another
-// device with the same code. Storage here is a JSON file on the server;
-// for production this should be a real datastore (the shape stays the same).
+// Encrypted cross-device sync. The client encrypts its data with a key that
+// never leaves the device (see src/syncCrypto.ts); this route only ever stores
+// ciphertext under an id derived from that key.
 
 import { promises as fs } from "fs";
-import os from "os";
 import path from "path";
-import crypto from "crypto";
+import {
+  fail,
+  guarded,
+  rateLimit,
+  readJson,
+  requireAccess,
+} from "../../src/server/security";
+import { dataPath, writeAtomic } from "../../src/server/storage";
 
-const STORE = path.join(os.tmpdir(), "newos-sync.json");
+const MAX_CIPHERTEXT_CHARS = 16_000_000;
+const SYNC_ID = /^[0-9a-f]{64}$/;
 
-async function readStore(): Promise<Record<string, unknown>> {
+// The strict pattern also keeps the id safe to use as a file name.
+function fileName(id: unknown): string {
+  if (typeof id !== "string" || !SYNC_ID.test(id)) {
+    throw fail(400, "Invalid sync id.");
+  }
+  return `${id}.json`;
+}
+
+export const GET = guarded(async (request) => {
+  const caller = requireAccess(request);
+  rateLimit(`sync:${caller}`, 30, 60_000);
+
+  const file = fileName(request.headers.get("x-sync-id"));
+  const dir = await dataPath("sync");
   try {
-    return JSON.parse(await fs.readFile(STORE, "utf8"));
+    const ciphertext = await fs.readFile(path.join(dir, file), "utf8");
+    return Response.json(
+      { ciphertext },
+      { headers: { "Cache-Control": "no-store" } }
+    );
   } catch {
-    return {};
+    return fail(404, "Nothing found.");
   }
-}
+});
 
-async function writeStore(data: Record<string, unknown>) {
-  await fs.writeFile(STORE, JSON.stringify(data), "utf8");
-}
+export const POST = guarded(async (request) => {
+  const caller = requireAccess(request);
+  rateLimit(`sync:${caller}`, 30, 60_000);
 
-// Never store the raw code; key by a hash so the file isn't a code list.
-const keyFor = (code: string) =>
-  crypto.createHash("sha256").update(code.trim().toLowerCase()).digest("hex");
-
-export async function GET(request: Request) {
-  const code = new URL(request.url).searchParams.get("code");
-  if (!code) return Response.json({ error: "Missing code." }, { status: 400 });
-  const store = await readStore();
-  const entry = store[keyFor(code)];
-  if (!entry) return Response.json({ error: "Nothing found." }, { status: 404 });
-  return Response.json({ blob: entry });
-}
-
-export async function POST(request: Request) {
-  let body: { code?: string; blob?: unknown };
-  try {
-    body = await request.json();
-  } catch {
-    return Response.json({ error: "Invalid JSON." }, { status: 400 });
+  const body = await readJson(request, MAX_CIPHERTEXT_CHARS + 1_000);
+  const file = fileName(body?.id);
+  if (
+    typeof body?.ciphertext !== "string" ||
+    !/^[0-9a-f]+$/.test(body.ciphertext)
+  ) {
+    return fail(400, "Invalid sync data.");
   }
-  if (!body.code || body.blob === undefined) {
-    return Response.json({ error: "Expected { code, blob }." }, { status: 400 });
-  }
-  const store = await readStore();
-  store[keyFor(body.code)] = body.blob;
-  await writeStore(store);
+
+  const dir = await dataPath("sync");
+  await writeAtomic(path.join(dir, file), body.ciphertext);
   return Response.json({ ok: true });
-}
+});

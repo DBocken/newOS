@@ -22,7 +22,7 @@ beforeEach(() => {
     memories: {},
     personas: [],
     activePersonaId: null,
-    accountKey: null,
+    syncEnabled: false,
   });
 });
 

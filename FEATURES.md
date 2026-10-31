@@ -1,8 +1,8 @@
 # Feature parity scorecard
 
 > See **BENCHMARK.md** for the externally-grounded comparison (equal-weighted,
-> cited against Character.AI/SpicyChat reviews): **92.3%**. The table below is
-> the author's weighted view; the two agree within ~0.5%.
+> cited against Character.AI/SpicyChat reviews): **88.5%**. The table below is
+> the author's older weighted view and is more generous; prefer BENCHMARK.md.
 
 
 Weighted comparison against leading AI character-chat apps (Character.AI,

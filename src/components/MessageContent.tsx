@@ -1,12 +1,9 @@
 import { Image, StyleSheet, Text, View } from "react-native";
 
-// Minimal in-bubble renderer: inline images (image URLs or data URIs) are
-// pulled out and shown as pictures; the rest renders with **bold** support.
-// Deliberately tiny — no markdown dependency — but covers the common cases
-// leading chat apps show (images + emphasis).
+import { splitInlineImages } from "../messageImages";
 
-const IMAGE_RE =
-  /(https?:\/\/\S+\.(?:png|jpe?g|gif|webp)(?:\?\S*)?|data:image\/[a-z]+;base64,[A-Za-z0-9+/=]+)/gi;
+// Minimal in-bubble renderer: inline images are pulled out and shown as
+// pictures; the rest renders with **bold** support.
 
 function Bold({ text }: { text: string }) {
   const parts = text.split(/(\*\*[^*]+\*\*)/g);
@@ -26,8 +23,7 @@ function Bold({ text }: { text: string }) {
 }
 
 export function MessageContent({ content }: { content: string }) {
-  const images = content.match(IMAGE_RE) ?? [];
-  const text = content.replace(IMAGE_RE, "").trim();
+  const { images, text } = splitInlineImages(content);
 
   return (
     <View style={styles.wrap}>

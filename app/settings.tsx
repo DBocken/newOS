@@ -1,20 +1,23 @@
 import * as Clipboard from "expo-clipboard";
-import { fetch as expoFetch } from "expo/fetch";
-import { apiUrl } from "../src/api";
+import * as Crypto from "expo-crypto";
 import { useRouter } from "expo-router";
+import { useEffect, useState } from "react";
 import {
   Alert,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import type { Character } from "../src/characters";
 import { disableDailyReminder, enableDailyReminder } from "../src/notifications";
-import { useStore } from "../src/store";
+import { getSecret, setSecret } from "../src/secrets";
+import { uid, useStore } from "../src/store";
+import { normalizeSyncKey } from "../src/syncCrypto";
 
-const MODELS = ["gpt-4o-mini", "gpt-4o", "gpt-4.1-mini", "gpt-4.1", "o1-mini"];
+const MODELS = ["gpt-4o-mini", "gpt-4o", "gpt-4.1-mini", "gpt-4.1"];
 const TEMPS = [
   { label: "Precise", value: 0.3 },
   { label: "Balanced", value: 0.8 },
@@ -29,63 +32,62 @@ export default function Settings() {
   const clearAllData = useStore((s) => s.clearAllData);
   const router = useRouter();
   const activePersona = useStore((s) => s.activePersona());
-  const accountKey = useStore((s) => s.accountKey);
-  const setAccountKey = useStore((s) => s.setAccountKey);
-  const syncCode = useStore((s) => s.syncCode);
+  const syncEnabled = useStore((s) => s.syncEnabled);
+  const setSyncEnabled = useStore((s) => s.setSyncEnabled);
+  const [accessCode, setAccessCode] = useState("");
+  const [hasAccessCode, setHasAccessCode] = useState(false);
+  const [syncKeyInput, setSyncKeyInput] = useState("");
 
-  const signIn = async () => {
-    // Use the clipboard passphrase as the account key (cross-platform, no
-    // native prompt). Copy a passphrase first; the same one on another device
-    // signs into the same account.
-    const key = (await Clipboard.getStringAsync()).trim();
-    if (key.length < 4) {
-      Alert.alert(
-        "Set a passphrase",
-        "Copy a passphrase (4+ chars) to the clipboard, then tap Sign in. Use the same one on your other devices."
-      );
-      return;
-    }
-    setAccountKey(key);
-    Alert.alert("Signed in", "Your data now syncs automatically on this and any device using the same passphrase.");
-  };
-  const exportBlob = useStore((s) => s.exportBlob);
-  const importBlob = useStore((s) => s.importBlob);
+  useEffect(() => {
+    getSecret("accessCode").then((code) => setHasAccessCode(!!code));
+  }, []);
 
-  const uploadSync = async () => {
-    try {
-      const res = await expoFetch(apiUrl("/api/sync"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code: syncCode, blob: exportBlob() }),
-      });
-      if (!res.ok) throw new Error();
-      await Clipboard.setStringAsync(syncCode);
-      Alert.alert(
-        "Backed up",
-        `Saved under code ${syncCode} (copied to clipboard). Enter it on another device to restore.`
-      );
-    } catch {
-      Alert.alert("Sync failed", "Could not reach the sync server.");
-    }
+  const saveAccessCode = async () => {
+    const code = accessCode.trim();
+    if (!code) return;
+    await setSecret("accessCode", code);
+    setAccessCode("");
+    setHasAccessCode(true);
+    Alert.alert("Saved", "This device can now use the server.");
   };
 
-  // Cross-platform restore: the code is taken from the clipboard (paste the
-  // code you copied on the other device first).
-  const restoreSync = async () => {
-    const code = (await Clipboard.getStringAsync()).trim();
-    if (!code) {
-      Alert.alert("No code", "Copy a sync code to the clipboard first.");
+  const removeAccessCode = async () => {
+    await setSecret("accessCode", null);
+    setHasAccessCode(false);
+  };
+
+  const turnOnSync = async () => {
+    const bytes = await Crypto.getRandomBytesAsync(32);
+    const key = Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+    await setSecret("syncKey", key);
+    setSyncEnabled(true);
+    Alert.alert(
+      "Sync is on",
+      "Your data is encrypted on this device before upload. Copy your sync key to use it on another device. Without it, the data can't be recovered."
+    );
+  };
+
+  const connectSync = async () => {
+    const key = normalizeSyncKey(syncKeyInput);
+    if (!key) {
+      Alert.alert("Invalid key", "A sync key has 64 characters, 0-9 and a-f.");
       return;
     }
-    try {
-      const res = await expoFetch(apiUrl(`/api/sync?code=${encodeURIComponent(code)}`));
-      const json = await res.json();
-      if (!res.ok || !json?.blob) throw new Error();
-      importBlob(json.blob);
-      Alert.alert("Restored", `Merged in data from code ${code}.`);
-    } catch {
-      Alert.alert("Restore failed", "No data found for that code.");
-    }
+    await setSecret("syncKey", key);
+    setSyncKeyInput("");
+    setSyncEnabled(true);
+  };
+
+  const copySyncKey = async () => {
+    const key = await getSecret("syncKey");
+    if (!key) return;
+    await Clipboard.setStringAsync(key);
+    Alert.alert("Copied", "Keep this key private. Anyone with it can read your synced chats.");
+  };
+
+  const turnOffSync = async () => {
+    await setSecret("syncKey", null);
+    setSyncEnabled(false);
   };
 
   const exportChars = async () => {
@@ -104,10 +106,23 @@ export default function Settings() {
       const arr: Character[] = Array.isArray(parsed) ? parsed : [parsed];
       let n = 0;
       for (const c of arr) {
-        if (c && c.name && c.systemPrompt) {
-          upsert({ ...c, builtin: false });
-          n++;
-        }
+        if (typeof c?.name !== "string" || typeof c?.systemPrompt !== "string") continue;
+        // A fresh id means pasted text can't replace an existing character,
+        // and remote avatars are dropped because loading one reveals the
+        // device's IP address to whoever hosts it.
+        upsert({
+          id: uid(),
+          name: c.name,
+          emoji: typeof c.emoji === "string" ? c.emoji : "🤖",
+          avatarUrl: c.avatarUrl?.startsWith?.("data:image/") ? c.avatarUrl : undefined,
+          tagline: typeof c.tagline === "string" ? c.tagline : "A custom character.",
+          greeting: typeof c.greeting === "string" ? c.greeting : "Hi there!",
+          systemPrompt: c.systemPrompt,
+          categories: Array.isArray(c.categories) ? c.categories.filter((x) => typeof x === "string") : [],
+          mature: Boolean(c.mature),
+          builtin: false,
+        });
+        n++;
       }
       Alert.alert(
         n ? "Imported" : "Nothing imported",
@@ -193,20 +208,58 @@ export default function Settings() {
         <Action label="Import from clipboard" onPress={importChars} />
       </Section>
 
-      <Section title="Account">
-        {accountKey ? (
+      <Section title="Server access">
+        {hasAccessCode ? (
           <>
-            <Row label="Signed in · auto-sync on" selected onPress={() => {}} />
-            <Action label="Sign out" onPress={() => setAccountKey(null)} />
+            <Row label="Access code saved" selected onPress={() => {}} />
+            <Action label="Remove access code" onPress={removeAccessCode} />
           </>
         ) : (
-          <Action label="Sign in with a passphrase" onPress={signIn} />
+          <View style={styles.inputRow}>
+            <TextInput
+              style={styles.input}
+              value={accessCode}
+              onChangeText={setAccessCode}
+              placeholder="Access code"
+              placeholderTextColor="#6b6b78"
+              autoCapitalize="none"
+              autoCorrect={false}
+              secureTextEntry
+            />
+            <Pressable style={styles.saveBtn} onPress={saveAccessCode}>
+              <Text style={styles.saveText}>Save</Text>
+            </Pressable>
+          </View>
         )}
       </Section>
 
-      <Section title="Manual sync">
-        <Action label={`Back up to cloud (code ${syncCode})`} onPress={uploadSync} />
-        <Action label="Restore from clipboard code" onPress={restoreSync} />
+      <Section title="Encrypted sync">
+        {syncEnabled ? (
+          <>
+            <Row label="Sync is on" selected onPress={() => {}} />
+            <Action label="Copy sync key" onPress={copySyncKey} />
+            <Action label="Turn off sync on this device" onPress={turnOffSync} />
+          </>
+        ) : (
+          <>
+            <Action label="Turn on sync" onPress={turnOnSync} />
+            <View style={styles.inputRow}>
+              <TextInput
+                style={styles.input}
+                value={syncKeyInput}
+                onChangeText={setSyncKeyInput}
+                placeholder="Key from another device"
+                placeholderTextColor="#6b6b78"
+                autoCapitalize="none"
+                autoCorrect={false}
+                secureTextEntry
+              />
+              <Pressable style={styles.saveBtn} onPress={connectSync}>
+                <Text style={styles.saveText}>Connect</Text>
+              </Pressable>
+            </View>
+          </>
+        )}
       </Section>
 
       <Section title="Data">
@@ -338,5 +391,21 @@ const styles = StyleSheet.create({
   switchOn: { backgroundColor: "#6d4aff" },
   knob: { width: 22, height: 22, borderRadius: 11, backgroundColor: "#fff" },
   knobOn: { alignSelf: "flex-end" },
+  inputRow: { flexDirection: "row", gap: 8, padding: 10 },
+  input: {
+    flex: 1,
+    backgroundColor: "#0b0b0f",
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    color: "#fff",
+  },
+  saveBtn: {
+    backgroundColor: "#6d4aff",
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    justifyContent: "center",
+  },
+  saveText: { color: "#fff", fontWeight: "700" },
   footer: { color: "#4b4b58", textAlign: "center", marginTop: 10 },
 });

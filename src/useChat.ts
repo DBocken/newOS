@@ -1,6 +1,5 @@
 import { useCallback, useState } from "react";
-import { fetch as expoFetch } from "expo/fetch";
-import { apiUrl } from "./api";
+import { apiError, apiFetch } from "./api";
 import type { Character } from "./characters";
 import { useStore } from "./store";
 import { buildSystemPrompt } from "./prompt";
@@ -35,7 +34,7 @@ export function useChat(conversationId: string, character: Character) {
       setIsStreaming(true);
 
       try {
-        const res = await expoFetch(apiUrl(CHAT_ENDPOINT), {
+        const res = await apiFetch(CHAT_ENDPOINT, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -51,8 +50,7 @@ export function useChat(conversationId: string, character: Character) {
         });
 
         if (!res.ok || !res.body) {
-          const detail = await res.text().catch(() => "");
-          throw new Error(detail || `Request failed (${res.status})`);
+          throw new Error(await apiError(res));
         }
 
         const reader = res.body.getReader();
@@ -114,7 +112,7 @@ export function useChat(conversationId: string, character: Character) {
     };
 
     try {
-      const res = await expoFetch(apiUrl(CHAT_ENDPOINT), {
+      const res = await apiFetch(CHAT_ENDPOINT, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -125,8 +123,7 @@ export function useChat(conversationId: string, character: Character) {
         }),
       });
       if (!res.ok || !res.body) {
-        const detail = await res.text().catch(() => "");
-        throw new Error(detail || `Request failed (${res.status})`);
+        throw new Error(await apiError(res));
       }
       const reader = res.body.getReader();
       const decoder = new TextDecoder();

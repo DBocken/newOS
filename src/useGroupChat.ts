@@ -1,9 +1,8 @@
 import { useCallback, useState } from "react";
-import { fetch as expoFetch } from "expo/fetch";
-import { apiUrl } from "./api";
+import { apiError, apiFetch } from "./api";
 import type { Character } from "./characters";
 import { useStore } from "./store";
-import { groupViewFor } from "./context";
+import { groupViewFor, trimForModel } from "./context";
 import type { ChatMessage } from "./types";
 
 const CHAT_ENDPOINT = "/api/chat";
@@ -15,14 +14,13 @@ async function complete(
   model: string,
   temperature: number
 ): Promise<string> {
-  const res = await expoFetch(apiUrl(CHAT_ENDPOINT), {
+  const res = await apiFetch(CHAT_ENDPOINT, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ systemPrompt, messages, model, temperature }),
   });
   if (!res.ok || !res.body) {
-    const detail = await res.text().catch(() => "");
-    throw new Error(detail || `Request failed (${res.status})`);
+    throw new Error(await apiError(res));
   }
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
@@ -68,7 +66,7 @@ export function useGroupChat(conversationId: string, members: Character[]) {
             `Do not speak for anyone else and do not prefix your name.`;
           const reply = await complete(
             system,
-            groupViewFor(member, transcript),
+            trimForModel(groupViewFor(member, transcript)),
             model,
             temperature
           );

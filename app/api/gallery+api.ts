@@ -1,100 +1,72 @@
-// Public character gallery. GET lists shared characters; POST publishes one
-// after a moderation check on its text. Storage is a JSON file on the server
-// (swap for a real datastore in production — same shape).
+// Shared character gallery. GET lists shared characters; POST publishes one
+// after a moderation check on its text. Each item is its own file, and ids are
+// assigned here so a publisher can't overwrite someone else's entry.
 
+import crypto from "crypto";
 import { promises as fs } from "fs";
-import os from "os";
 import path from "path";
+import {
+  fail,
+  guarded,
+  isFlagged,
+  rateLimit,
+  readJson,
+  requireAccess,
+  requireOpenAIKey,
+  sanitizeCharacter,
+} from "../../src/server/security";
+import { dataPath, writeAtomic } from "../../src/server/storage";
 
-const STORE = path.join(os.tmpdir(), "newos-gallery.json");
+const MAX_ITEMS = 1_000;
+const LIST_LIMIT = 50;
 
-type GalleryItem = {
-  id: string;
-  name: string;
-  emoji: string;
-  avatarUrl?: string;
-  tagline: string;
-  greeting: string;
-  systemPrompt: string;
-  categories: string[];
-  publishedAt: number;
-};
+export const GET = guarded(async (request) => {
+  const caller = requireAccess(request);
+  rateLimit(`gallery:${caller}`, 60, 60_000);
 
-async function readStore(): Promise<GalleryItem[]> {
-  try {
-    return JSON.parse(await fs.readFile(STORE, "utf8"));
-  } catch {
-    return [];
-  }
-}
+  const dir = await dataPath("gallery");
+  const names = (await fs.readdir(dir))
+    .filter((name) => name.endsWith(".json"))
+    .sort()
+    .reverse() // names start with the publish time, so this is newest first
+    .slice(0, LIST_LIMIT);
 
-async function writeStore(items: GalleryItem[]) {
-  await fs.writeFile(STORE, JSON.stringify(items), "utf8");
-}
+  const items = await Promise.all(
+    names.map(async (name) =>
+      JSON.parse(await fs.readFile(path.join(dir, name), "utf8"))
+    )
+  );
+  return Response.json({ items });
+});
 
-async function isFlagged(text: string, apiKey: string): Promise<boolean> {
-  try {
-    const res = await fetch("https://api.openai.com/v1/moderations", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({ model: "omni-moderation-latest", input: text }),
-    });
-    if (!res.ok) return false;
-    const json = await res.json();
-    return Boolean(json?.results?.[0]?.flagged);
-  } catch {
-    return false;
-  }
-}
+export const POST = guarded(async (request) => {
+  const caller = requireAccess(request);
+  rateLimit(`gallery-publish:${caller}`, 10, 60 * 60_000);
+  const apiKey = requireOpenAIKey();
 
-export async function GET() {
-  const items = await readStore();
-  // Newest first; never return the avatar data URIs in the list to keep it light.
-  const list = items
-    .sort((a, b) => b.publishedAt - a.publishedAt)
-    .slice(0, 100);
-  return Response.json({ items: list });
-}
-
-export async function POST(request: Request) {
-  const apiKey = process.env.OPENAI_API_KEY;
-  let c: Partial<GalleryItem>;
-  try {
-    c = (await request.json())?.character ?? {};
-  } catch {
-    return Response.json({ error: "Invalid JSON." }, { status: 400 });
-  }
-  if (!c.name || !c.systemPrompt) {
-    return Response.json({ error: "Name and personality required." }, { status: 400 });
-  }
+  const body = await readJson(request, 300_000);
+  const character = sanitizeCharacter(body?.character);
 
   // Moderation gate on everything a reader would see.
-  if (apiKey) {
-    const blob = `${c.name}\n${c.tagline ?? ""}\n${c.greeting ?? ""}\n${c.systemPrompt}`;
-    if (await isFlagged(blob, apiKey)) {
-      return Response.json(
-        { error: "This character didn't pass moderation and wasn't published." },
-        { status: 422 }
-      );
-    }
+  const visible = [
+    character.name,
+    character.tagline,
+    character.greeting,
+    character.systemPrompt,
+  ].join("\n");
+  if (await isFlagged(visible, apiKey)) {
+    return fail(422, "This character didn't pass moderation and wasn't published.");
   }
 
-  const items = await readStore();
-  const item: GalleryItem = {
-    id: String(c.id ?? Date.now().toString(36)),
-    name: c.name,
-    emoji: c.emoji ?? "🤖",
-    avatarUrl: c.avatarUrl,
-    tagline: c.tagline ?? "",
-    greeting: c.greeting ?? "Hi!",
-    systemPrompt: c.systemPrompt,
-    categories: c.categories ?? [],
-    publishedAt: Date.now(),
-  };
-  // Replace any prior publish with the same id.
-  await writeStore([item, ...items.filter((x) => x.id !== item.id)]);
+  const dir = await dataPath("gallery");
+  const existing = await fs.readdir(dir);
+  if (existing.length >= MAX_ITEMS) return fail(507, "The gallery is full.");
+
+  const now = Date.now();
+  const id = `${now.toString(36).padStart(10, "0")}-${crypto.randomUUID()}`;
+  await writeAtomic(
+    path.join(dir, `${id}.json`),
+    JSON.stringify({ ...character, id, publishedAt: now })
+  );
   return Response.json({ ok: true });
-}
+});

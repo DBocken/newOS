@@ -1,5 +1,4 @@
-import { fetch as expoFetch } from "expo/fetch";
-import { apiUrl } from "../src/api";
+import { apiError, apiFetch } from "../src/api";
 import * as ImagePicker from "expo-image-picker";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
@@ -57,15 +56,13 @@ export default function CreateCharacter() {
     setGenerating(true);
     setError(null);
     try {
-      const res = await expoFetch(apiUrl("/api/avatar"), {
+      const res = await apiFetch("/api/avatar", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt }),
       });
+      if (!res.ok) throw new Error(await apiError(res));
       const json = await res.json();
-      if (!res.ok || !json?.dataUri) {
-        throw new Error(json?.error || "Could not generate avatar.");
-      }
       setAvatarUrl(json.dataUri);
     } catch (e: any) {
       setError(e?.message ?? "Avatar generation failed.");

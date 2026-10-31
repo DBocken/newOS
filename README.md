@@ -47,8 +47,8 @@ src/
   components/          Avatar, MessageContent (markdown + inline images)
 ```
 
-See `BENCHMARK.md` for the externally-grounded parity comparison (92.3%) and
-`FEATURES.md` for the weighted scorecard.
+See `BENCHMARK.md` for the parity comparison (88.5%), `FEATURES.md` for the
+weighted scorecard, and `SECURITY.md` for the security model and server setup.
 
 ### Why a server route?
 
@@ -62,7 +62,8 @@ want to avoid.
 An installed app has no server of its own, so AI chat, avatars, sync and the
 gallery only work once the API routes are deployed and `EXPO_PUBLIC_API_URL`
 points at them when the APK is built. Without it the app still opens, and those
-features show "No server configured".
+features show "No server configured". Each person also enters an access code
+under Settings. See `SECURITY.md` for the server setup.
 
 There are two ways to produce an installable APK:
 

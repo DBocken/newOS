@@ -1,5 +1,4 @@
-import { fetch as expoFetch } from "expo/fetch";
-import { apiUrl } from "../src/api";
+import { apiError, apiFetch } from "../src/api";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
@@ -26,11 +25,12 @@ export default function Gallery() {
   useEffect(() => {
     (async () => {
       try {
-        const res = await expoFetch(apiUrl("/api/gallery"));
+        const res = await apiFetch("/api/gallery");
+        if (!res.ok) throw new Error(await apiError(res));
         const json = await res.json();
         setItems(json.items ?? []);
-      } catch {
-        setError("Couldn't reach the gallery.");
+      } catch (e: any) {
+        setError(e?.message ?? "Couldn't reach the gallery.");
       }
     })();
   }, []);

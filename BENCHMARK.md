@@ -52,13 +52,16 @@ subscription tiers, bot moderation-before-activation, up to 100 personas:
 | NSFW / mature toggle | ✅ |
 | Moderation before publishing a bot | ✅ |
 | Re-engagement notifications | ✅ local |
-| Account + automatic cloud sync | ✅ |
-| Paid subscription tiers | 🟡 paywall UI + tier gating; demo, no real billing |
-| Native mobile app | ✅ |
+| Account + automatic cloud sync | 🟡 encrypted sync with a key; no real accounts |
+| Paid subscription tiers | ⬜ local demo screen; nothing is sold or unlocked |
+| Native mobile app | 🟡 no APK has been built yet |
 | Edit a sent message | ✅ |
 | Message actions (copy / regenerate) | ✅ |
 
-**26 features · score 24.5 · parity 94.2%**
+**26 features · score 23 · parity 88.5%**
+
+An earlier version of this page claimed 94.2%. That counted features as finished
+that had never run on a device or against a deployed server.
 
 (Plus extras beyond the checklist that leading apps also have: global chat
 search, an insights/stats screen, swipeable response alternatives, and chat
@@ -78,9 +81,9 @@ is implemented here.
 
 ```python
 items = [  # 1 present, 0.5 partial, 0 absent
-  1,1,1,1,1,1,1,1,1,1,1,1,1,1,0.5,0.5,1,1,1,1,1,1,0.5,1,1,1
+  1,1,1,1,1,1,1,1,1,1,1,1,1,1,0.5,0.5,1,1,1,1,1,0.5,0,0.5,1,1
 ]
-print(f"{len(items)} features, parity {sum(items)/len(items)*100:.1f}%")  # 94.2%
+print(f"{len(items)} features, parity {sum(items)/len(items)*100:.1f}%")  # 88.5%
 ```
 
 ## Honest caveats

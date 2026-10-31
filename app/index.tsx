@@ -12,13 +12,14 @@ import {
 import { CATEGORIES, type Character } from "../src/characters";
 import { Avatar } from "../src/components/Avatar";
 import { useStore } from "../src/store";
+import { useHydrated } from "../src/useHydrated";
 
 export default function Discovery() {
   const router = useRouter();
   const all = useStore((s) => s.allCharacters());
   const showMature = useStore((s) => s.settings.showMature);
   const favorites = useStore((s) => s.favorites);
-  const hydrated = useStore((s) => s.hydrated);
+  const hydrated = useHydrated();
   const onboarded = useStore((s) => s.settings.onboarded);
 
   const [query, setQuery] = useState("");
